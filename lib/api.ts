@@ -11,16 +11,36 @@ export class ApiError extends Error {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    method,
-    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    cache: "no-store",
-  });
-  const text = await res.text();
-  const parsed = text ? safeJson(text) : null;
-  if (!res.ok) throw new ApiError(res.status, parsed, `${method} ${path} → ${res.status}`);
-  return parsed as T;
+  const isIdempotent = method === "GET" || method === "HEAD";
+  const maxAttempts = isIdempotent ? 3 : 1;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const res = await fetch(`${API}${path}`, {
+        method,
+        headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        cache: "no-store",
+      });
+      const text = await res.text();
+      const parsed = text ? safeJson(text) : null;
+      if (!res.ok) {
+        const transient = res.status === 502 || res.status === 503 || res.status === 504;
+        if (transient && isIdempotent && attempt < maxAttempts - 1) {
+          await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+          continue;
+        }
+        throw new ApiError(res.status, parsed, `${method} ${path} → ${res.status}`);
+      }
+      return parsed as T;
+    } catch (err) {
+      lastErr = err;
+      if (err instanceof ApiError) throw err;
+      if (!isIdempotent || attempt >= maxAttempts - 1) throw err;
+      await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+    }
+  }
+  throw lastErr;
 }
 
 function safeJson(s: string): unknown {
