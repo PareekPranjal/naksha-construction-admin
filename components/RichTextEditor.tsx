@@ -49,9 +49,24 @@ const TOOLBAR = [
   ],
 ];
 
+function normalizeIncoming(value: string): string {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  // Convert Quill-induced or pasted non-breaking spaces back to regular spaces
+  // so words wrap naturally. Real intentional &nbsp; cases are rare in this CMS.
+  const cleaned = trimmed.replace(/&nbsp;/g, " ").replace(/ /g, " ");
+  // Wrap plain text in a <p> so Quill doesn't treat it as preformatted.
+  if (!/<[a-z!\/]/i.test(cleaned)) {
+    return `<p>${cleaned.replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br>")}</p>`;
+  }
+  return cleaned;
+}
+
 export function RichTextEditor({ id, value, onChange, placeholder, minHeight = 200 }: Props) {
   const quillRef = useRef<unknown>(null);
   const [picker, setPicker] = useState(false);
+  const normalized = normalizeIncoming(value);
 
   useEffect(() => {
     let cancelled = false;
@@ -190,7 +205,7 @@ export function RichTextEditor({ id, value, onChange, placeholder, minHeight = 2
         // @ts-expect-error react-quill-new types
         ref={quillRef}
         theme="snow"
-        value={value || ""}
+        value={normalized}
         onChange={onChange}
         modules={modules}
         formats={formats}
