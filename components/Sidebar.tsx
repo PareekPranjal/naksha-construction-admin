@@ -14,6 +14,7 @@ import {
   Package,
   Menu,
   Sliders,
+  Search,
 } from "lucide-react";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
@@ -36,6 +37,7 @@ export function Sidebar() {
         { href: "/pages", label: "Pages", icon: FileText },
         { href: "/navigation", label: "Navigation", icon: Menu },
         { href: "/settings", label: "Site settings", icon: Sliders },
+        { href: "/seo", label: "SEO", icon: Search },
         { href: "/site", label: "Globals (raw JSON)", icon: Settings },
         { href: "/media", label: "Media library", icon: ImageIcon },
         { href: "/redirects", label: "Redirects", icon: ArrowRightLeft },
