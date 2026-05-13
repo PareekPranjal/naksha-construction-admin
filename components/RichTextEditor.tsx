@@ -243,6 +243,9 @@ export function RichTextEditor({ id, value, onChange, placeholder, minHeight = 2
         <InternalLinkPicker onSelect={insertInternalLink} onClose={() => setPicker(false)} />
       )}
       <style jsx>{`
+        .rich-text-editor {
+          position: relative;
+        }
         .rich-text-editor :global(.ql-toolbar) {
           position: sticky;
           top: 0;
@@ -264,6 +267,36 @@ export function RichTextEditor({ id, value, onChange, placeholder, minHeight = 2
         }
         .rich-text-editor :global(.ql-internalLink) {
           width: 28px;
+        }
+        /* Quill's link/video/formula tooltip must float above the sticky
+           toolbar and not get clipped by the editor's overflow. */
+        .rich-text-editor :global(.ql-tooltip) {
+          z-index: 30;
+          position: absolute;
+          left: 12px !important;
+          top: 8px !important;
+          transform: none !important;
+          background: #fff;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+          padding: 8px 10px;
+          white-space: nowrap;
+          max-width: calc(100% - 24px);
+        }
+        .rich-text-editor :global(.ql-tooltip input[type="text"]) {
+          width: 280px;
+          max-width: 50vw;
+          padding: 4px 8px;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+        }
+        .rich-text-editor :global(.ql-tooltip a.ql-action),
+        .rich-text-editor :global(.ql-tooltip a.ql-remove) {
+          margin-left: 10px;
+        }
+        .rich-text-editor :global(.ql-tooltip.ql-hidden) {
+          display: none;
         }
       `}</style>
     </div>
