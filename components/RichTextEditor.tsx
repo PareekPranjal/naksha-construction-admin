@@ -66,7 +66,32 @@ function normalizeIncoming(value: string): string {
 export function RichTextEditor({ id, value, onChange, placeholder, minHeight = 200 }: Props) {
   const quillRef = useRef<unknown>(null);
   const [picker, setPicker] = useState(false);
-  const normalized = normalizeIncoming(value);
+  // The editor is uncontrolled internally: we normalize the *initial* value
+  // once, then let Quill be the source of truth. This avoids the
+  // controlled-component feedback loop where Quill's slight HTML normalization
+  // (e.g. `<p><br></p>` for empty content) differs from the parent's value and
+  // triggers an infinite render cycle.
+  const [internalValue, setInternalValue] = useState(() => normalizeIncoming(value));
+  const lastEmittedRef = useRef(internalValue);
+
+  // If the parent passes a wholly different value (e.g. loading a different
+  // record), accept it. Compare visible text to avoid resync on cosmetic diffs.
+  useEffect(() => {
+    if (value === lastEmittedRef.current) return;
+    const incoming = normalizeIncoming(value);
+    const stripTags = (s: string) => s.replace(/<[^>]*>/g, "").trim();
+    if (stripTags(incoming) !== stripTags(internalValue)) {
+      setInternalValue(incoming);
+      lastEmittedRef.current = incoming;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const handleChange = (html: string) => {
+    setInternalValue(html);
+    lastEmittedRef.current = html;
+    onChange(html);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -93,11 +118,11 @@ export function RichTextEditor({ id, value, onChange, placeholder, minHeight = 2
 
   useEffect(() => {
     const el = document.querySelector(`[data-rte-id="${id ?? "rte"}"] .ql-internalLink`);
-    if (!el) return;
+    if (!el || el.querySelector("svg")) return;
     el.innerHTML =
       '<svg viewBox="0 0 18 18"><path class="ql-stroke" d="M7 11 11 7M6.5 13.5a3.5 3.5 0 0 1 0-5l2-2M11.5 4.5a3.5 3.5 0 0 1 0 5l-2 2"/><circle class="ql-fill" cx="14" cy="4" r="1.5"/></svg>';
     (el as HTMLElement).title = "Insert internal link";
-  });
+  }, [id]);
 
   const modules = useMemo(
     () => ({
@@ -205,8 +230,8 @@ export function RichTextEditor({ id, value, onChange, placeholder, minHeight = 2
         // @ts-expect-error react-quill-new types
         ref={quillRef}
         theme="snow"
-        value={normalized}
-        onChange={onChange}
+        value={internalValue}
+        onChange={handleChange}
         modules={modules}
         formats={formats}
         placeholder={placeholder}
