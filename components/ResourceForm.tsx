@@ -8,6 +8,7 @@ import { Button, Card, Field, Input, Select, Textarea } from "./ui";
 import { ImagePicker } from "./ImagePicker";
 import { ImageArrayPicker } from "./ImageArrayPicker";
 import { TagsInput } from "./TagsInput";
+import { RichTextEditor } from "./RichTextEditor";
 import { useConfirm } from "./Confirm";
 
 type Props = {
@@ -169,13 +170,21 @@ export function ResourceForm({ resource, initial, mode, id }: Props) {
           />
         );
       case "textarea":
-      case "richtext":
         return (
           <Textarea
             {...common}
-            rows={f.type === "richtext" ? 8 : 4}
+            rows={4}
             value={(v as string) ?? ""}
             onChange={(e) => set(f.name, e.target.value)}
+          />
+        );
+      case "richtext":
+        return (
+          <RichTextEditor
+            id={f.name}
+            value={(v as string) ?? ""}
+            onChange={(html) => set(f.name, html)}
+            placeholder={f.placeholder}
           />
         );
       case "select":

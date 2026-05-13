@@ -28,7 +28,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
       { name: "client", label: "Client", type: "text" },
       { name: "size", label: "Size", type: "text" },
       { name: "duration", label: "Duration", type: "text" },
-      { name: "summary", label: "Summary", type: "textarea", required: true },
+      { name: "summary", label: "Summary", type: "richtext", required: true },
       { name: "description", label: "Description", type: "richtext" },
       {
         name: "coverImage",
@@ -56,7 +56,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
     fields: [
       { name: "slug", label: "Slug", type: "slug", required: true },
       { name: "title", label: "Title", type: "text", required: true },
-      { name: "summary", label: "Summary", type: "textarea", required: true },
+      { name: "summary", label: "Summary", type: "richtext", required: true },
       {
         name: "icon",
         label: "Image / icon",
@@ -78,7 +78,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
     fields: [
       { name: "slug", label: "Slug", type: "slug", required: true },
       { name: "title", label: "Title", type: "text", required: true },
-      { name: "summary", label: "Summary", type: "textarea", required: true },
+      { name: "summary", label: "Summary", type: "richtext", required: true },
       {
         name: "image",
         label: "Image",
@@ -99,7 +99,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
     fields: [
       { name: "slug", label: "Slug", type: "slug", required: true },
       { name: "title", label: "Title", type: "text", required: true },
-      { name: "excerpt", label: "Excerpt", type: "textarea", required: true },
+      { name: "excerpt", label: "Excerpt", type: "richtext", required: true },
       { name: "body", label: "Body", type: "richtext" },
       {
         name: "cover",
@@ -152,7 +152,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
         options: ["Full-time", "Contract", "Apprenticeship"],
         required: true,
       },
-      { name: "summary", label: "Summary", type: "textarea", required: true },
+      { name: "summary", label: "Summary", type: "richtext", required: true },
       { name: "responsibilities", label: "Responsibilities", type: "stringArray" },
       { name: "requirements", label: "Requirements", type: "stringArray" },
       { name: "benefits", label: "Benefits", type: "stringArray" },
@@ -188,7 +188,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
     identifier: "id",
     listColumns: ["author", "company", "role"],
     fields: [
-      { name: "quote", label: "Quote", type: "textarea", required: true },
+      { name: "quote", label: "Quote", type: "richtext", required: true },
       { name: "author", label: "Author", type: "text", required: true },
       { name: "role", label: "Role", type: "text" },
       { name: "company", label: "Company", type: "text" },

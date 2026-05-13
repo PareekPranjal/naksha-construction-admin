@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Button, Card, Field, Input, Select, Textarea } from "./ui";
 import { ImagePicker } from "./ImagePicker";
+import { RichTextEditor } from "./RichTextEditor";
 
 // ── Block types ──────────────────────────────────────────────────────────────
 type AnyBlock = Record<string, unknown> & { type: string };
@@ -54,7 +55,11 @@ function HeroEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlo
         <Input value={strField(value.title)} onChange={(e) => set("title", e.target.value)} />
       </Field>
       <Field label="Subtitle">
-        <Textarea value={strField(value.subtitle)} onChange={(e) => set("subtitle", e.target.value)} />
+        <RichTextEditor
+          id="hero-subtitle"
+          value={strField(value.subtitle)}
+          onChange={(html) => set("subtitle", html)}
+        />
       </Field>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Field label="CTA label">
@@ -161,10 +166,10 @@ function IntroEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBl
         <Input value={strField(value.heading)} onChange={(e) => set("heading", e.target.value)} />
       </Field>
       <Field label="Body">
-        <Textarea
-          rows={5}
+        <RichTextEditor
+          id="intro-body"
           value={strField(value.body)}
-          onChange={(e) => set("body", e.target.value)}
+          onChange={(html) => set("body", html)}
         />
       </Field>
     </div>
@@ -179,7 +184,11 @@ function CtaEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBloc
         <Input value={strField(value.heading)} onChange={(e) => set("heading", e.target.value)} />
       </Field>
       <Field label="Sub-heading">
-        <Textarea value={strField(value.sub)} onChange={(e) => set("sub", e.target.value)} />
+        <RichTextEditor
+          id="cta-sub"
+          value={strField(value.sub)}
+          onChange={(html) => set("sub", html)}
+        />
       </Field>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Field label="CTA label">
@@ -196,11 +205,12 @@ function CtaEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBloc
 function LongformEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlock) => void }) {
   const set = (k: string, v: unknown) => onChange({ ...value, [k]: v });
   return (
-    <Field label="Body" help="Use blank lines to separate paragraphs.">
-      <Textarea
-        rows={10}
+    <Field label="Body" help="Use the editor toolbar to format text, add headings, lists, and links.">
+      <RichTextEditor
+        id="longform-body"
         value={strField(value.body)}
-        onChange={(e) => set("body", e.target.value)}
+        onChange={(html) => set("body", html)}
+        minHeight={280}
       />
     </Field>
   );
@@ -244,10 +254,11 @@ function TimelineEditor({ value, onChange }: { value: AnyBlock; onChange: (v: An
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
-          <Textarea
-            placeholder="Description"
+          <RichTextEditor
+            id={`timeline-${i}-body`}
             value={it.body ?? ""}
-            onChange={(e) => update(i, { body: e.target.value })}
+            onChange={(html) => update(i, { body: html })}
+            minHeight={160}
           />
         </div>
       ))}
@@ -289,10 +300,11 @@ function CommitmentsEditor({ value, onChange }: { value: AnyBlock; onChange: (v:
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
-          <Textarea
-            placeholder="Body"
+          <RichTextEditor
+            id={`commitment-${i}-body`}
             value={it.body ?? ""}
-            onChange={(e) => update(i, { body: e.target.value })}
+            onChange={(html) => update(i, { body: html })}
+            minHeight={160}
           />
           <Field label="Image (optional)">
             <ImagePicker
