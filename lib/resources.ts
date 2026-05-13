@@ -92,7 +92,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
   },
   articles: {
     key: "articles",
-    label: "Articles",
+    label: "Blog",
     apiPath: "/articles",
     identifier: "id",
     listColumns: ["title", "author", "category", "publishedAt"],
