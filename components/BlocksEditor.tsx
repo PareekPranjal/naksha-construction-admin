@@ -22,9 +22,11 @@ import {
   Wrench,
   Users,
   MapPin,
+  Images,
 } from "lucide-react";
 import { Button, Card, Field, Input, Select, Textarea } from "./ui";
 import { ImagePicker } from "./ImagePicker";
+import { ImageArrayPicker } from "./ImageArrayPicker";
 import { RichTextEditor } from "./RichTextEditor";
 
 // ── Block types ──────────────────────────────────────────────────────────────
@@ -330,6 +332,36 @@ function CommitmentsEditor({ value, onChange }: { value: AnyBlock; onChange: (v:
   );
 }
 
+function GalleryEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlock) => void }) {
+  const items = Array.isArray(value.items) ? (value.items as { url: string; alt?: string }[]) : [];
+  const columns = typeof value.columns === "number" ? (value.columns as 2 | 3 | 4) : 3;
+  const set = (k: string, v: unknown) => onChange({ ...value, [k]: v });
+  return (
+    <div className="space-y-4">
+      <Field label="Heading (eyebrow)" help="Small label above the grid.">
+        <Input value={strField(value.heading)} onChange={(e) => set("heading", e.target.value)} />
+      </Field>
+      <Field label="Intro (optional)">
+        <Input value={strField(value.intro)} onChange={(e) => set("intro", e.target.value)} />
+      </Field>
+      <Field label="Columns at desktop">
+        <Select value={String(columns)} onChange={(e) => set("columns", Number(e.target.value))}>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </Select>
+      </Field>
+      <Field label="Images" help="Click a card to set alt text. Drag to reorder.">
+        <ImageArrayPicker
+          value={items}
+          onChange={(next) => set("items", next)}
+          recommendedSize="1200×900px (4:3) — gallery thumbs"
+        />
+      </Field>
+    </div>
+  );
+}
+
 function ContactFormEditor() {
   return (
     <p className="text-sm text-muted">
@@ -455,6 +487,13 @@ const BLOCK_DEFS: Record<string, BlockDef> = {
     icon: HeartHandshake,
     defaults: () => ({ type: "commitments", items: [] }),
     Editor: CommitmentsEditor,
+  },
+  gallery: {
+    label: "Image gallery",
+    description: "Grid of images with optional captions on hover.",
+    icon: Images,
+    defaults: () => ({ type: "gallery", items: [], columns: 3 }),
+    Editor: GalleryEditor,
   },
   contactForm: {
     label: "Contact form",
