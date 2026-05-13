@@ -76,6 +76,17 @@ function HeroEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlo
           recommendedSize="1920×1080px (16:9 full bleed)"
         />
       </Field>
+      <Field label="Banner size" help="Use the largest only on the home page.">
+        <Select
+          value={(typeof value.size === "string" && value.size) || "full"}
+          onChange={(e) => set("size", e.target.value)}
+        >
+          <option value="full">Full screen (home page)</option>
+          <option value="lg">Large (78% viewport)</option>
+          <option value="md">Medium (55% viewport)</option>
+          <option value="sm">Small (40% viewport)</option>
+        </Select>
+      </Field>
     </div>
   );
 }
