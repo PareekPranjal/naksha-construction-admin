@@ -75,6 +75,12 @@ export type ContentRow = {
   seoTitle: string | null;
   seoDescription: string | null;
   seoOgImage: string | null;
+  seoKeywords: string[] | null;
+  seoOgTitle: string | null;
+  seoOgDescription: string | null;
+  seoCanonicalUrl: string | null;
+  seoNoIndex: boolean | null;
+  seoNoFollow: boolean | null;
   hasSEO: boolean;
 };
 

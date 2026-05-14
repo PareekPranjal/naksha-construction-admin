@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/api";
 import { Button, Card, Field, Input, Textarea } from "@/components/ui";
 import { ImagePicker } from "@/components/ImagePicker";
 import { CharCount } from "@/components/CharCount";
+import { KeywordsInput } from "@/components/KeywordsInput";
 import { Tabs } from "@/components/Tabs";
 import { cn } from "@/lib/cn";
 import type { ContentRow } from "../types";
@@ -190,6 +191,12 @@ function ContentSeoModal({
   const [seoTitle, setSeoTitle] = useState(row.seoTitle ?? "");
   const [seoDescription, setSeoDescription] = useState(row.seoDescription ?? "");
   const [seoOgImage, setSeoOgImage] = useState(row.seoOgImage ?? "");
+  const [seoKeywords, setSeoKeywords] = useState<string[]>(row.seoKeywords ?? []);
+  const [seoOgTitle, setSeoOgTitle] = useState(row.seoOgTitle ?? "");
+  const [seoOgDescription, setSeoOgDescription] = useState(row.seoOgDescription ?? "");
+  const [seoCanonicalUrl, setSeoCanonicalUrl] = useState(row.seoCanonicalUrl ?? "");
+  const [seoNoIndex, setSeoNoIndex] = useState(Boolean(row.seoNoIndex));
+  const [seoNoFollow, setSeoNoFollow] = useState(Boolean(row.seoNoFollow));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -201,6 +208,12 @@ function ContentSeoModal({
         seoTitle: seoTitle || null,
         seoDescription: seoDescription || null,
         seoOgImage: seoOgImage || null,
+        seoKeywords,
+        seoOgTitle: seoOgTitle || null,
+        seoOgDescription: seoOgDescription || null,
+        seoCanonicalUrl: seoCanonicalUrl || null,
+        seoNoIndex,
+        seoNoFollow,
       });
       await onSaved();
     } catch (e) {
@@ -213,7 +226,7 @@ function ContentSeoModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg border border-rule w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg border border-rule w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-rule px-5 py-3 flex items-center justify-between z-10">
           <h2 className="text-base font-semibold">Edit SEO — {row.title}</h2>
           <button type="button" onClick={onClose} className="text-muted hover:text-ink text-sm">
@@ -237,6 +250,13 @@ function ContentSeoModal({
               <CharCount value={seoDescription} type="description" />
             </div>
           </Field>
+          <Field label="SEO keywords" help='Comma-separated. Used in <meta name="keywords"> and JSON-LD.'>
+            <KeywordsInput
+              value={seoKeywords}
+              onChange={setSeoKeywords}
+              placeholder="construction Jaipur, design-build, …"
+            />
+          </Field>
           <Field label="OG image" help="1200×630 social share image.">
             <ImagePicker
               value={seoOgImage}
@@ -244,6 +264,46 @@ function ContentSeoModal({
               recommendedSize="1200×630px"
             />
           </Field>
+          <Field label="OG title" help="Override the share-card title. Defaults to SEO title.">
+            <Input value={seoOgTitle} onChange={(e) => setSeoOgTitle(e.target.value)} />
+          </Field>
+          <Field label="OG description" help="Override the share-card description. Defaults to SEO description.">
+            <Textarea
+              rows={2}
+              value={seoOgDescription}
+              onChange={(e) => setSeoOgDescription(e.target.value)}
+            />
+          </Field>
+          <Field label="Canonical URL" help="Absolute URL. Leave blank to use the page's own URL.">
+            <Input
+              value={seoCanonicalUrl}
+              onChange={(e) => setSeoCanonicalUrl(e.target.value)}
+              placeholder="https://…"
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={seoNoIndex}
+                onChange={(e) => setSeoNoIndex(e.target.checked)}
+              />
+              <span>
+                Hide from search engines{" "}
+                <span className="text-muted text-xs">(noindex)</span>
+              </span>
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={seoNoFollow}
+                onChange={(e) => setSeoNoFollow(e.target.checked)}
+              />
+              <span>
+                Don&apos;t follow links <span className="text-muted text-xs">(nofollow)</span>
+              </span>
+            </label>
+          </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
         <div className="sticky bottom-0 bg-white border-t border-rule px-5 py-3 flex items-center justify-end gap-2">
