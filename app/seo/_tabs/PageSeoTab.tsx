@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/api";
 import { Button, Card, Field, Input, Textarea } from "@/components/ui";
 import { ImagePicker } from "@/components/ImagePicker";
 import { CharCount } from "@/components/CharCount";
+import { KeywordsInput } from "@/components/KeywordsInput";
 import { useConfirm } from "@/components/Confirm";
 import type { SeoPage } from "../types";
 
@@ -260,17 +261,9 @@ function PageEditorModal({
           </Field>
 
           <Field label="Keywords" help="Comma-separated.">
-            <Input
-              value={(draft.keywords ?? []).join(", ")}
-              onChange={(e) =>
-                set(
-                  "keywords",
-                  e.target.value
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                )
-              }
+            <KeywordsInput
+              value={draft.keywords ?? []}
+              onChange={(next) => set("keywords", next)}
             />
           </Field>
 

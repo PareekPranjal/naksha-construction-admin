@@ -3,6 +3,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import { Button, Card, Field, Input, Textarea } from "@/components/ui";
 import { ImagePicker } from "@/components/ImagePicker";
+import { KeywordsInput } from "@/components/KeywordsInput";
 import type { SeoSettings } from "../types";
 
 type Props = {
@@ -99,17 +100,10 @@ export function AdvancedTab({ data, set }: Props) {
         </div>
 
         <Field label="Opening hours" help='Schema.org format, comma-separated. e.g. "Mo-Sa 09:00-18:00, Su 10:00-14:00"'>
-          <Input
-            value={(data.localBusiness.openingHours ?? []).join(", ")}
-            onChange={(e) =>
-              setLb(
-                "openingHours",
-                e.target.value
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              )
-            }
+          <KeywordsInput
+            value={data.localBusiness.openingHours ?? []}
+            onChange={(next) => setLb("openingHours", next)}
+            placeholder="Mo-Sa 09:00-18:00, Su 10:00-14:00"
           />
         </Field>
 

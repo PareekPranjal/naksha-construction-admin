@@ -3,6 +3,7 @@
 import { Card, Field, Input, Textarea } from "@/components/ui";
 import { ImagePicker } from "@/components/ImagePicker";
 import { CharCount } from "@/components/CharCount";
+import { KeywordsInput } from "@/components/KeywordsInput";
 import type { SeoSettings } from "../types";
 
 type Props = {
@@ -59,17 +60,9 @@ export function GlobalSettingsTab({ data, set }: Props) {
         </Field>
 
         <Field label="Default keywords" help="Comma-separated. e.g. construction Jaipur, design-build contractor.">
-          <Input
-            value={data.defaultKeywords.join(", ")}
-            onChange={(e) =>
-              set(
-                "defaultKeywords",
-                e.target.value
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              )
-            }
+          <KeywordsInput
+            value={data.defaultKeywords}
+            onChange={(next) => set("defaultKeywords", next)}
           />
           <p className="mt-1 text-xs text-muted">{data.defaultKeywords.length} keywords</p>
         </Field>
