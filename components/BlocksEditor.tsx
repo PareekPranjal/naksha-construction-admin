@@ -24,6 +24,7 @@ import {
   MapPin,
   Images,
   AtSign,
+  Map as MapIcon,
 } from "lucide-react";
 import { Button, Card, Field, Input, Select, Textarea } from "./ui";
 import { ImagePicker } from "./ImagePicker";
@@ -363,6 +364,67 @@ function GalleryEditor({ value, onChange }: { value: AnyBlock; onChange: (v: Any
   );
 }
 
+function MapEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlock) => void }) {
+  const set = (k: string, v: unknown) => onChange({ ...value, [k]: v });
+  const lat = typeof value.lat === "number" ? value.lat : "";
+  const lng = typeof value.lng === "number" ? value.lng : "";
+  const zoom = typeof value.zoom === "number" ? value.zoom : 16;
+  const setNum = (k: string, raw: string) => set(k, raw === "" ? undefined : Number(raw));
+  return (
+    <div className="space-y-4">
+      <Field label="Heading (optional)">
+        <Input value={strField(value.heading)} onChange={(e) => set("heading", e.target.value)} />
+      </Field>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <Field label="Latitude" help="e.g. 26.8529953">
+          <Input
+            type="number"
+            step="any"
+            value={lat}
+            onChange={(e) => setNum("lat", e.target.value)}
+          />
+        </Field>
+        <Field label="Longitude" help="e.g. 75.8076847">
+          <Input
+            type="number"
+            step="any"
+            value={lng}
+            onChange={(e) => setNum("lng", e.target.value)}
+          />
+        </Field>
+        <Field label="Zoom" help="1 (world) – 20 (street)">
+          <Input
+            type="number"
+            min={1}
+            max={20}
+            value={zoom}
+            onChange={(e) => setNum("zoom", e.target.value)}
+          />
+        </Field>
+      </div>
+      <Field label="Height">
+        <Select
+          value={typeof value.height === "string" ? value.height : "md"}
+          onChange={(e) => set("height", e.target.value)}
+        >
+          <option value="sm">Small</option>
+          <option value="md">Medium</option>
+          <option value="lg">Large</option>
+        </Select>
+      </Field>
+      <Field
+        label="Custom embed URL (advanced, optional)"
+        help="Overrides lat/lng. Paste a `https://www.google.com/maps/embed?...` URL."
+      >
+        <Input value={strField(value.embedUrl)} onChange={(e) => set("embedUrl", e.target.value)} />
+      </Field>
+      <Field label="Open-in-maps link label" help="Defaults to 'Open in Google Maps →'.">
+        <Input value={strField(value.linkLabel)} onChange={(e) => set("linkLabel", e.target.value)} />
+      </Field>
+    </div>
+  );
+}
+
 function EmailQueryEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlock) => void }) {
   const set = (k: string, v: unknown) => onChange({ ...value, [k]: v });
   return (
@@ -530,6 +592,20 @@ const BLOCK_DEFS: Record<string, BlockDef> = {
     icon: AtSign,
     defaults: () => ({ type: "emailQuery" }),
     Editor: EmailQueryEditor,
+  },
+  map: {
+    label: "Map",
+    description: "Embedded Google map. Paste lat/lng or a Google embed URL.",
+    icon: MapIcon,
+    defaults: () => ({
+      type: "map",
+      heading: "Find us",
+      lat: 26.8529953,
+      lng: 75.8076847,
+      zoom: 16,
+      height: "md",
+    }),
+    Editor: MapEditor,
   },
   testimonials: {
     label: "Testimonials",
