@@ -8,6 +8,8 @@ export type FieldType =
   | "image"
   | "imageArray"
   | "stringArray"
+  | "keywords"
+  | "boolean"
   | "json";
 
 export type FieldDef = {

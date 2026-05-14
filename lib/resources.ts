@@ -1,14 +1,71 @@
 import type { ResourceDef } from "./types";
 
 const seoFields = [
-  { name: "seoTitle", label: "SEO title", type: "text", group: "seo" },
-  { name: "seoDescription", label: "SEO description", type: "textarea", group: "seo" },
+  {
+    name: "seoTitle",
+    label: "SEO title",
+    type: "text",
+    group: "seo",
+    help: "Shown in search results. ≤60 chars ideal, ≤70 max.",
+  },
+  {
+    name: "seoDescription",
+    label: "SEO description",
+    type: "textarea",
+    group: "seo",
+    help: "120–155 chars ideal.",
+  },
+  {
+    name: "seoKeywords",
+    label: "SEO keywords",
+    type: "keywords",
+    group: "seo",
+    help: "Comma-separated. Used in <meta name=\"keywords\"> and JSON-LD.",
+    placeholder: "construction Jaipur, design-build, …",
+  },
   {
     name: "seoOgImage",
     label: "OG / share image",
     type: "image",
     group: "seo",
     recommendedSize: "1200×630px (social share)",
+    help: "Used for Facebook, WhatsApp, LinkedIn, Twitter card preview.",
+  },
+  {
+    name: "seoOgTitle",
+    label: "OG title",
+    type: "text",
+    group: "seo",
+    help: "Override the share-card title. Defaults to SEO title.",
+  },
+  {
+    name: "seoOgDescription",
+    label: "OG description",
+    type: "textarea",
+    group: "seo",
+    help: "Override the share-card description. Defaults to SEO description.",
+  },
+  {
+    name: "seoCanonicalUrl",
+    label: "Canonical URL",
+    type: "text",
+    group: "seo",
+    help: "Absolute URL. Leave blank to use the page's own URL.",
+    placeholder: "https://…",
+  },
+  {
+    name: "seoNoIndex",
+    label: "Hide from search engines",
+    type: "boolean",
+    group: "seo",
+    placeholder: "noindex (page won't appear in Google)",
+  },
+  {
+    name: "seoNoFollow",
+    label: "Don't follow links on this page",
+    type: "boolean",
+    group: "seo",
+    placeholder: "nofollow (links won't pass authority)",
   },
 ] as const;
 
@@ -132,6 +189,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
         recommendedSize: "800×800px (1:1 square)",
       },
       { name: "sortOrder", label: "Sort order", type: "number", group: "meta" },
+      ...seoFields,
     ],
   },
   jobs: {

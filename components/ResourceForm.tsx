@@ -8,6 +8,7 @@ import { Button, Card, Field, Input, Select, Textarea } from "./ui";
 import { ImagePicker } from "./ImagePicker";
 import { ImageArrayPicker } from "./ImageArrayPicker";
 import { TagsInput } from "./TagsInput";
+import { KeywordsInput } from "./KeywordsInput";
 import { RichTextEditor } from "./RichTextEditor";
 import { useConfirm } from "./Confirm";
 
@@ -33,7 +34,10 @@ function defaultValue(f: FieldDef): unknown {
       return 0;
     case "stringArray":
     case "imageArray":
+    case "keywords":
       return [];
+    case "boolean":
+      return false;
     case "json":
       return {};
     case "select":
@@ -95,6 +99,7 @@ export function ResourceForm({ resource, initial, mode, id }: Props) {
       for (const f of resource.fields) {
         let v = values[f.name];
         if (f.type === "number" && typeof v === "string") v = v === "" ? 0 : Number(v);
+        if (f.type === "boolean") v = Boolean(v);
         if (v === "" && !f.required) v = null;
         payload[f.name] = v;
       }
@@ -223,6 +228,25 @@ export function ResourceForm({ resource, initial, mode, id }: Props) {
             value={(v as string[]) ?? []}
             onChange={(items) => set(f.name, items)}
           />
+        );
+      case "keywords":
+        return (
+          <KeywordsInput
+            value={(v as string[]) ?? []}
+            onChange={(items) => set(f.name, items)}
+            placeholder={f.placeholder}
+          />
+        );
+      case "boolean":
+        return (
+          <label className="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={Boolean(v)}
+              onChange={(e) => set(f.name, e.target.checked)}
+            />
+            <span className="text-muted">{f.placeholder ?? "Enabled"}</span>
+          </label>
         );
       case "json":
         return (
