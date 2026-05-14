@@ -23,6 +23,7 @@ import {
   Users,
   MapPin,
   Images,
+  AtSign,
 } from "lucide-react";
 import { Button, Card, Field, Input, Select, Textarea } from "./ui";
 import { ImagePicker } from "./ImagePicker";
@@ -362,6 +363,27 @@ function GalleryEditor({ value, onChange }: { value: AnyBlock; onChange: (v: Any
   );
 }
 
+function EmailQueryEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlock) => void }) {
+  const set = (k: string, v: unknown) => onChange({ ...value, [k]: v });
+  return (
+    <div className="space-y-4">
+      <Field label="Heading" help="Shown above the form. Defaults to 'Send us a quick message'.">
+        <Input value={strField(value.heading)} onChange={(e) => set("heading", e.target.value)} />
+      </Field>
+      <Field label="Intro line">
+        <Input value={strField(value.intro)} onChange={(e) => set("intro", e.target.value)} />
+      </Field>
+      <Field label="Button label" help="Defaults to 'Send message'.">
+        <Input value={strField(value.ctaLabel)} onChange={(e) => set("ctaLabel", e.target.value)} />
+      </Field>
+      <p className="text-xs text-muted">
+        Submissions land in the Contact inbox. Fields are fixed: name, email, subject (optional),
+        message.
+      </p>
+    </div>
+  );
+}
+
 function ContactFormEditor() {
   return (
     <p className="text-sm text-muted">
@@ -501,6 +523,13 @@ const BLOCK_DEFS: Record<string, BlockDef> = {
     icon: Mail,
     defaults: () => ({ type: "contactForm" }),
     Editor: ContactFormEditor,
+  },
+  emailQuery: {
+    label: "Email query box",
+    description: "Compact name/email/subject/message form that lands in the Contact inbox.",
+    icon: AtSign,
+    defaults: () => ({ type: "emailQuery" }),
+    Editor: EmailQueryEditor,
   },
   testimonials: {
     label: "Testimonials",
