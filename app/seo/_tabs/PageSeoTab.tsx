@@ -1,13 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Plus, Pencil, Trash2 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { Button, Card, Field, Input, Textarea } from "@/components/ui";
 import { ImagePicker } from "@/components/ImagePicker";
 import { CharCount } from "@/components/CharCount";
 import { KeywordsInput } from "@/components/KeywordsInput";
+import { SeoPreview } from "@/components/SeoPreview";
 import { useConfirm } from "@/components/Confirm";
+import { detectCollectionPath } from "@/lib/seoResolve";
 import type { SeoPage } from "../types";
 
 const QUICK_ADD_PATHS = [
@@ -166,26 +169,50 @@ export function PageSeoTab() {
               </tr>
             </thead>
             <tbody>
-              {pages.map((p) => (
-                <tr key={p.id} className="border-t border-rule">
-                  <td className="py-2 font-mono text-xs">{p.path}</td>
-                  <td className="py-2">{p.title || <span className="text-muted">—</span>}</td>
-                  <td className="py-2 text-xs text-muted truncate max-w-[280px]">
-                    {p.description || "—"}
-                  </td>
-                  <td className="py-2 text-center text-xs">
-                    {p.noIndex ? <span className="text-red-600">noindex</span> : <span className="text-emerald-600">index</span>}
-                  </td>
-                  <td className="py-2 text-right whitespace-nowrap">
-                    <button onClick={() => startEdit(p)} className="text-ink hover:text-accent p-1.5" title="Edit">
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => remove(p)} className="text-red-600 hover:text-red-700 p-1.5" title="Delete">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {pages.map((p) => {
+                const hit = detectCollectionPath(p.path);
+                return (
+                  <tr key={p.id} className="border-t border-rule">
+                    <td className="py-2 font-mono text-xs">
+                      <div className="flex items-center gap-1.5">
+                        {p.path}
+                        {hit && (
+                          <span
+                            className="rounded-full bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5"
+                            title={`This URL is also a ${hit.collection} item — its own SEO wins by default.`}
+                          >
+                            {hit.collection}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-2">{p.title || <span className="text-muted">—</span>}</td>
+                    <td className="py-2 text-xs text-muted truncate max-w-[280px]">
+                      {p.description || "—"}
+                    </td>
+                    <td className="py-2 text-center text-xs">
+                      {p.noIndex ? <span className="text-red-600">noindex</span> : <span className="text-emerald-600">index</span>}
+                    </td>
+                    <td className="py-2 text-right whitespace-nowrap">
+                      {hit && (
+                        <Link
+                          href={hit.editPath}
+                          className="text-muted hover:text-ink p-1.5 inline-flex"
+                          title={`Open ${hit.collection} list`}
+                        >
+                          <ArrowUpRight className="h-4 w-4" />
+                        </Link>
+                      )}
+                      <button onClick={() => startEdit(p)} className="text-ink hover:text-accent p-1.5" title="Edit">
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => remove(p)} className="text-red-600 hover:text-red-700 p-1.5" title="Delete">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -225,9 +252,11 @@ function PageEditorModal({
   const set = <K extends keyof Omit<SeoPage, "id">>(k: K, v: Omit<SeoPage, "id">[K]) =>
     setDraft({ ...draft, [k]: v });
 
+  const collisionHit = detectCollectionPath(draft.path);
+
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg border border-rule w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg border border-rule w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-rule px-5 py-3 flex items-center justify-between z-10">
           <h2 className="text-base font-semibold">
             {isEdit ? `Edit SEO for ${draft.path}` : "New page SEO override"}
@@ -237,10 +266,31 @@ function PageEditorModal({
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="p-5 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-5">
+          <div className="space-y-4">
           <Field label="Path" help='Must start with "/". e.g. /about, /services/design-build' required>
             <Input value={draft.path} onChange={(e) => set("path", e.target.value)} disabled={isEdit} />
           </Field>
+
+          {collisionHit && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">This URL is a {collisionHit.collection} item.</p>
+                <p className="mt-1 text-amber-900/80">
+                  The {collisionHit.collection.replace(/s$/, "")}&apos;s own SEO already wins for{" "}
+                  <code className="font-mono">{draft.path}</code>. Use this row only to force a different
+                  value here, otherwise prefer editing the item directly.
+                </p>
+                <Link
+                  href={collisionHit.editPath}
+                  className="mt-1.5 inline-flex items-center gap-1 underline hover:text-amber-700"
+                >
+                  Open {collisionHit.collection} list <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              </div>
+            </div>
+          )}
 
           <Field label="Title">
             <Input value={draft.title ?? ""} onChange={(e) => set("title", e.target.value)} />
@@ -313,6 +363,37 @@ function PageEditorModal({
               />
               nofollow
             </label>
+          </div>
+          </div>
+
+          {/* Right column: live preview, sticky on tall screens. */}
+          <div className="lg:sticky lg:top-16 self-start">
+            {draft.path?.startsWith("/") ? (
+              <SeoPreview
+                path={draft.path}
+                item={{
+                  // Treat the modal's draft as if it were the SeoPage row
+                  // already saved, so the editor sees their unsaved changes
+                  // reflected in the preview immediately.
+                  seoTitle: draft.title ?? null,
+                  seoDescription: draft.description ?? null,
+                  seoOgImage: draft.ogImage ?? null,
+                  seoKeywords: draft.keywords ?? null,
+                  seoOgTitle: draft.ogTitle ?? null,
+                  seoOgDescription: draft.ogDescription ?? null,
+                  seoCanonicalUrl: draft.canonicalUrl ?? null,
+                  seoNoIndex: draft.noIndex ?? null,
+                  seoNoFollow: draft.noFollow ?? null,
+                }}
+                title="What this URL will render"
+              />
+            ) : (
+              <Card className="p-4">
+                <p className="text-xs text-muted">
+                  Enter a path starting with <code>/</code> to see the live SEO preview.
+                </p>
+              </Card>
+            )}
           </div>
         </div>
 

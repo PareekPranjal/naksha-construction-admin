@@ -11,6 +11,7 @@ import { TagsInput } from "./TagsInput";
 import { KeywordsInput } from "./KeywordsInput";
 import { RichTextEditor } from "./RichTextEditor";
 import { useConfirm } from "./Confirm";
+import { SeoPreview } from "./SeoPreview";
 
 type Props = {
   resource: ResourceDef;
@@ -53,6 +54,23 @@ function defaultValue(f: FieldDef): unknown {
 function altKey(name: string): string {
   return `${name}Alt`;
 }
+
+// Maps an admin resource to the public-website URL pattern, plus the field
+// names this collection uses for its display title and primary image. Keeps
+// the SeoPreview's auto-fallbacks honest. Collections not listed here (e.g.
+// testimonials) don't have a dedicated public URL so the preview is skipped.
+const PUBLIC_URL_MAP: Record<
+  string,
+  { urlPrefix: string; titleField: string; imageField: string; descField?: string }
+> = {
+  projects:  { urlPrefix: "/projects",  titleField: "title", imageField: "coverImage", descField: "summary" },
+  services:  { urlPrefix: "/services",  titleField: "title", imageField: "icon",       descField: "summary" },
+  markets:   { urlPrefix: "/markets",   titleField: "title", imageField: "image",      descField: "summary" },
+  articles:  { urlPrefix: "/insights",  titleField: "title", imageField: "cover",      descField: "excerpt" },
+  jobs:      { urlPrefix: "/careers",   titleField: "title", imageField: "",           descField: "summary" },
+  leaders:   { urlPrefix: "",           titleField: "name",  imageField: "portrait" },
+  locations: { urlPrefix: "",           titleField: "city",  imageField: "image" },
+};
 
 function buildInitialValues(
   fields: FieldDef[],
@@ -312,9 +330,40 @@ export function ResourceForm({ resource, initial, mode, id }: Props) {
       </Card>
     );
 
+  // Live SEO preview for collections that have a public website URL.
+  const urlMap = PUBLIC_URL_MAP[resource.key];
+  const slug = typeof values.slug === "string" ? values.slug : "";
+  const previewPath =
+    urlMap && urlMap.urlPrefix && slug ? `${urlMap.urlPrefix}/${slug}` : null;
+  const previewItem = urlMap
+    ? {
+        title: typeof values[urlMap.titleField] === "string" ? (values[urlMap.titleField] as string) : undefined,
+        description:
+          urlMap.descField && typeof values[urlMap.descField] === "string"
+            ? (values[urlMap.descField] as string).replace(/<[^>]+>/g, "").slice(0, 200)
+            : undefined,
+        ogImage:
+          urlMap.imageField && typeof values[urlMap.imageField] === "string"
+            ? (values[urlMap.imageField] as string)
+            : undefined,
+        seoTitle: (values.seoTitle as string | null | undefined) ?? null,
+        seoDescription: (values.seoDescription as string | null | undefined) ?? null,
+        seoOgImage: (values.seoOgImage as string | null | undefined) ?? null,
+        seoKeywords: (values.seoKeywords as string[] | null | undefined) ?? null,
+        seoOgTitle: (values.seoOgTitle as string | null | undefined) ?? null,
+        seoOgDescription: (values.seoOgDescription as string | null | undefined) ?? null,
+        seoCanonicalUrl: (values.seoCanonicalUrl as string | null | undefined) ?? null,
+        seoNoIndex: (values.seoNoIndex as boolean | null | undefined) ?? null,
+        seoNoFollow: (values.seoNoFollow as boolean | null | undefined) ?? null,
+      }
+    : undefined;
+
   return (
     <div className="space-y-5 max-w-4xl">
       {renderSection("Content", grouped.main)}
+      {grouped.seo.length > 0 && previewPath && (
+        <SeoPreview path={previewPath} item={previewItem} />
+      )}
       {renderSection("SEO", grouped.seo)}
       {renderSection("Meta", grouped.meta)}
 

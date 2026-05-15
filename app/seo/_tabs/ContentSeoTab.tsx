@@ -7,9 +7,17 @@ import { Button, Card, Field, Input, Textarea } from "@/components/ui";
 import { ImagePicker } from "@/components/ImagePicker";
 import { CharCount } from "@/components/CharCount";
 import { KeywordsInput } from "@/components/KeywordsInput";
+import { SeoPreview } from "@/components/SeoPreview";
 import { Tabs } from "@/components/Tabs";
 import { cn } from "@/lib/cn";
 import type { ContentRow } from "../types";
+
+const COLLECTION_URL_PREFIX: Record<CollectionKey, string> = {
+  projects: "/projects",
+  services: "/services",
+  articles: "/insights",
+  markets: "/markets",
+};
 
 type CollectionKey = "projects" | "services" | "articles" | "markets";
 
@@ -224,16 +232,19 @@ function ContentSeoModal({
     }
   }
 
+  const previewPath = `${COLLECTION_URL_PREFIX[collection]}/${row.slug}`;
+
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg border border-rule w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg border border-rule w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-rule px-5 py-3 flex items-center justify-between z-10">
           <h2 className="text-base font-semibold">Edit SEO — {row.title}</h2>
           <button type="button" onClick={onClose} className="text-muted hover:text-ink text-sm">
             Close
           </button>
         </div>
-        <div className="p-5 space-y-4">
+        <div className="p-5 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-5">
+          <div className="space-y-4">
           <Field label="SEO title">
             <Input value={seoTitle} onChange={(e) => setSeoTitle(e.target.value)} />
             <div className="mt-1 flex justify-end">
@@ -305,6 +316,27 @@ function ContentSeoModal({
             </label>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
+          </div>
+
+          {/* Right column: live preview that reacts to in-progress edits. */}
+          <div className="lg:sticky lg:top-16 self-start">
+            <SeoPreview
+              path={previewPath}
+              item={{
+                title: row.title,
+                seoTitle: seoTitle || null,
+                seoDescription: seoDescription || null,
+                seoOgImage: seoOgImage || null,
+                seoKeywords: seoKeywords.length > 0 ? seoKeywords : null,
+                seoOgTitle: seoOgTitle || null,
+                seoOgDescription: seoOgDescription || null,
+                seoCanonicalUrl: seoCanonicalUrl || null,
+                seoNoIndex,
+                seoNoFollow,
+              }}
+              title="What this page will render"
+            />
+          </div>
         </div>
         <div className="sticky bottom-0 bg-white border-t border-rule px-5 py-3 flex items-center justify-end gap-2">
           <Button variant="secondary" type="button" onClick={onClose}>

@@ -120,6 +120,8 @@ export default function SeoPage() {
 
       {stats && <StatsBar stats={stats} />}
 
+      <CascadeBanner />
+
       <Tabs tabs={TABS} active={active} onChange={setActive} />
 
       {active === "global" && <GlobalSettingsTab data={settings} set={set} />}
@@ -143,6 +145,58 @@ export default function SeoPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function CascadeBanner() {
+  return (
+    <Card className="p-4 mb-5 border-l-4 border-l-accent">
+      <div className="flex items-start gap-3">
+        <div className="text-xs leading-relaxed">
+          <p className="font-semibold text-ink mb-1">How SEO values are chosen</p>
+          <p className="text-muted">
+            For any page the website picks the first set value in this order:
+          </p>
+          <ol className="mt-2 space-y-0.5 text-ink">
+            <li>
+              <span className="inline-block w-4 text-muted">1.</span>{" "}
+              <span className="font-medium">Per-item SEO</span>{" "}
+              <span className="text-muted">
+                — the SEO section on a Project / Service / Article / etc. edit form. Wins for that
+                specific URL.
+              </span>
+            </li>
+            <li>
+              <span className="inline-block w-4 text-muted">2.</span>{" "}
+              <span className="font-medium">Page SEO override</span>{" "}
+              <span className="text-muted">
+                — a row in the <em>Page SEO</em> tab keyed by URL path. Use it for static pages or
+                to force a value on a path that has no collection item.
+              </span>
+            </li>
+            <li>
+              <span className="inline-block w-4 text-muted">3.</span>{" "}
+              <span className="font-medium">Auto fallback</span>{" "}
+              <span className="text-muted">
+                — derived from the item itself (title → SEO title, summary → description, cover →
+                OG image) when nothing explicit is set.
+              </span>
+            </li>
+            <li>
+              <span className="inline-block w-4 text-muted">4.</span>{" "}
+              <span className="font-medium">Global defaults</span>{" "}
+              <span className="text-muted">
+                — the <em>Global Settings</em> tab. Catch-all for everything else.
+              </span>
+            </li>
+          </ol>
+          <p className="mt-2 text-muted">
+            Open any item or page below and watch the <strong className="text-ink">Live SEO preview</strong>{" "}
+            update in real time — every value carries a badge telling you which layer it came from.
+          </p>
+        </div>
+      </div>
+    </Card>
   );
 }
 
