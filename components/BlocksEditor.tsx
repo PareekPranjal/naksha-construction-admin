@@ -80,6 +80,13 @@ function HeroEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlo
           recommendedSize="1920×1080px (16:9 full bleed)"
         />
       </Field>
+      <Field label="Image alt text" help="Describe the image for screen readers and SEO.">
+        <Input
+          value={strField(value.imageAlt)}
+          onChange={(e) => set("imageAlt", e.target.value)}
+          placeholder="e.g. Construction site at Civil Lines, Jaipur"
+        />
+      </Field>
       <Field label="Banner size" help="Use the largest only on the home page.">
         <Select
           value={(typeof value.size === "string" && value.size) || "full"}
@@ -282,12 +289,12 @@ function TimelineEditor({ value, onChange }: { value: AnyBlock; onChange: (v: An
 }
 
 function CommitmentsEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlock) => void }) {
-  type Item = { key?: string; title: string; body: string; image?: string };
+  type Item = { key?: string; title: string; body: string; image?: string; imageAlt?: string };
   const items: Item[] = Array.isArray(value.items) ? (value.items as Item[]) : [];
   const update = (i: number, patch: Partial<Item>) =>
     onChange({ ...value, items: items.map((it, idx) => (idx === i ? { ...it, ...patch } : it)) });
   const add = () =>
-    onChange({ ...value, items: [...items, { title: "", body: "", image: "" }] });
+    onChange({ ...value, items: [...items, { title: "", body: "", image: "", imageAlt: "" }] });
   const remove = (i: number) =>
     onChange({ ...value, items: items.filter((_, idx) => idx !== i) });
 
@@ -326,6 +333,13 @@ function CommitmentsEditor({ value, onChange }: { value: AnyBlock; onChange: (v:
               value={it.image ?? null}
               onChange={(url) => update(i, { image: url ?? "" })}
               recommendedSize="1400×900px (16:10 landscape)"
+            />
+          </Field>
+          <Field label="Image alt text">
+            <Input
+              value={it.imageAlt ?? ""}
+              onChange={(e) => update(i, { imageAlt: e.target.value })}
+              placeholder="Describe the image for accessibility"
             />
           </Field>
         </div>

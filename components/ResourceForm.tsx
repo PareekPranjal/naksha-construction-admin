@@ -47,28 +47,39 @@ function defaultValue(f: FieldDef): unknown {
   }
 }
 
+// `imageWithAlt` fields are declared once but back two columns: <name> for the
+// URL and <name>Alt for the alt text. This helper hydrates both keys from the
+// initial payload so the form doesn't drop the alt value on edit.
+function altKey(name: string): string {
+  return `${name}Alt`;
+}
+
+function buildInitialValues(
+  fields: FieldDef[],
+  initial: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const v: Record<string, unknown> = {};
+  for (const f of fields) {
+    v[f.name] = initial?.[f.name] ?? defaultValue(f);
+    if (f.type === "imageWithAlt") {
+      v[altKey(f.name)] = initial?.[altKey(f.name)] ?? "";
+    }
+  }
+  return v;
+}
+
 export function ResourceForm({ resource, initial, mode, id }: Props) {
   const router = useRouter();
   const confirm = useConfirm();
-  const [values, setValues] = useState<Record<string, unknown>>(() => {
-    const v: Record<string, unknown> = {};
-    for (const f of resource.fields) {
-      v[f.name] = initial?.[f.name] ?? defaultValue(f);
-    }
-    return v;
-  });
+  const [values, setValues] = useState<Record<string, unknown>>(() =>
+    buildInitialValues(resource.fields, initial),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorBody, setErrorBody] = useState<unknown>(null);
 
   useEffect(() => {
-    if (initial) {
-      const v: Record<string, unknown> = {};
-      for (const f of resource.fields) {
-        v[f.name] = initial[f.name] ?? defaultValue(f);
-      }
-      setValues(v);
-    }
+    if (initial) setValues(buildInitialValues(resource.fields, initial));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial?.id]);
 
@@ -102,6 +113,11 @@ export function ResourceForm({ resource, initial, mode, id }: Props) {
         if (f.type === "boolean") v = Boolean(v);
         if (v === "" && !f.required) v = null;
         payload[f.name] = v;
+        // imageWithAlt: also serialize the companion alt-text column.
+        if (f.type === "imageWithAlt") {
+          const a = values[altKey(f.name)];
+          payload[altKey(f.name)] = typeof a === "string" && a.length > 0 ? a : null;
+        }
       }
       if (mode === "create") {
         await api.post(resource.apiPath, payload);
@@ -214,6 +230,23 @@ export function ResourceForm({ resource, initial, mode, id }: Props) {
             recommendedSize={f.recommendedSize}
           />
         );
+      case "imageWithAlt": {
+        const altVal = (values[altKey(f.name)] as string) ?? "";
+        return (
+          <div className="space-y-2">
+            <ImagePicker
+              value={(v as string) ?? null}
+              onChange={(url) => set(f.name, url)}
+              recommendedSize={f.recommendedSize}
+            />
+            <Input
+              value={altVal}
+              onChange={(e) => set(altKey(f.name), e.target.value)}
+              placeholder="Alt text — describe the image for accessibility & SEO"
+            />
+          </div>
+        );
+      }
       case "imageArray":
         return (
           <ImageArrayPicker

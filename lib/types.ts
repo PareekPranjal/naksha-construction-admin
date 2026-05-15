@@ -6,6 +6,7 @@ export type FieldType =
   | "slug"
   | "select"
   | "image"
+  | "imageWithAlt"
   | "imageArray"
   | "stringArray"
   | "keywords"

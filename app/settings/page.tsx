@@ -20,6 +20,7 @@ import { Button, Card, Field, Input, PageHeader, Select, Textarea } from "@/comp
 import { ImagePicker } from "@/components/ImagePicker";
 
 type Social = { icon: string; label?: string; url: string };
+type ImageRef = { url: string; alt: string };
 type Settings = {
   // identity
   name: string;
@@ -43,6 +44,15 @@ type Settings = {
     ogImage: string;
     twitterHandle: string;
     googleVerification: string;
+  };
+  // Named hero images for pages whose hero isn't authored as a CMS block.
+  // Add new slots here as needed.
+  heroImages: {
+    homePoster: ImageRef;       // home page hero video poster / fallback image
+    insightsIndex: ImageRef;    // /insights index hero
+    careersWhyNaksha: ImageRef; // /careers/why-naksha hero
+    whyNakshaSection: ImageRef; // /careers/why-naksha second image
+    ctaDefault: ImageRef;       // CTA banner fallback when a block doesn't set one
   };
   // social
   socials: Social[];
@@ -68,6 +78,13 @@ const EMPTY: Settings = {
     ogImage: "",
     twitterHandle: "",
     googleVerification: "",
+  },
+  heroImages: {
+    homePoster: { url: "", alt: "" },
+    insightsIndex: { url: "", alt: "" },
+    careersWhyNaksha: { url: "", alt: "" },
+    whyNakshaSection: { url: "", alt: "" },
+    ctaDefault: { url: "", alt: "" },
   },
   socials: [],
 };
@@ -216,6 +233,8 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      <PageHeroesSection data={data} setData={setData} />
+
       <Card className="p-5 mb-5 space-y-4">
         <h3 className="text-sm font-semibold text-muted uppercase tracking-wider">SEO defaults</h3>
         <p className="text-xs text-muted">
@@ -331,6 +350,85 @@ export default function SettingsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Page heroes section ────────────────────────────────────────────────────
+// Each entry is one named slot consumed by a specific website page. Adding a
+// new slot here is a 3-step change: 1) extend Settings.heroImages above,
+// 2) extend SLOTS, 3) read it from cms-server SiteSettings on the website.
+const HERO_SLOTS: { key: keyof Settings["heroImages"]; label: string; help: string; recommended: string }[] = [
+  {
+    key: "homePoster",
+    label: "Home — hero poster",
+    help: "Shown behind the home page hero. Used as the video poster + still fallback.",
+    recommended: "1920×1080px (16:9)",
+  },
+  {
+    key: "insightsIndex",
+    label: "Insights — index hero",
+    help: "Hero image at the top of /insights.",
+    recommended: "1920×1080px (16:9)",
+  },
+  {
+    key: "careersWhyNaksha",
+    label: "Why Naksha — hero",
+    help: "Hero image at the top of /careers/why-naksha.",
+    recommended: "1920×1080px (16:9)",
+  },
+  {
+    key: "whyNakshaSection",
+    label: "Why Naksha — section image",
+    help: "Mid-page image on /careers/why-naksha.",
+    recommended: "1400×1000px (16:10)",
+  },
+  {
+    key: "ctaDefault",
+    label: "CTA banner — fallback",
+    help: "Used by any CTA banner on the site that doesn't pin its own background image.",
+    recommended: "2000×1100px (landscape)",
+  },
+];
+
+function PageHeroesSection({
+  data,
+  setData,
+}: {
+  data: Settings;
+  setData: React.Dispatch<React.SetStateAction<Settings>>;
+}) {
+  const setSlot = (key: keyof Settings["heroImages"], patch: Partial<ImageRef>) => {
+    setData((d) => ({
+      ...d,
+      heroImages: { ...d.heroImages, [key]: { ...d.heroImages[key], ...patch } },
+    }));
+  };
+  return (
+    <Card className="p-5 mb-5 space-y-4">
+      <h3 className="text-sm font-semibold text-muted uppercase tracking-wider">Page heroes</h3>
+      <p className="text-xs text-muted">
+        Hero images for pages whose layout isn&apos;t authored as a CMS page block. Replace the
+        image and write descriptive alt text — the alt is read by screen readers and search engines.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {HERO_SLOTS.map((slot) => (
+          <div key={slot.key} className="space-y-2">
+            <Field label={slot.label} help={slot.help}>
+              <ImagePicker
+                value={data.heroImages[slot.key]?.url ?? ""}
+                onChange={(url) => setSlot(slot.key, { url: url ?? "" })}
+                recommendedSize={slot.recommended}
+              />
+            </Field>
+            <Input
+              value={data.heroImages[slot.key]?.alt ?? ""}
+              onChange={(e) => setSlot(slot.key, { alt: e.target.value })}
+              placeholder="Alt text"
+            />
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 

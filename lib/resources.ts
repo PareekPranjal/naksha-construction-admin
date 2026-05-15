@@ -90,7 +90,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
       {
         name: "coverImage",
         label: "Cover image",
-        type: "image",
+        type: "imageWithAlt",
         recommendedSize: "1600×1000px (16:10 landscape)",
       },
       {
@@ -117,7 +117,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
       {
         name: "icon",
         label: "Image / icon",
-        type: "image",
+        type: "imageWithAlt",
         recommendedSize: "1600×1000px (16:10)",
       },
       { name: "bullets", label: "Bullets", type: "stringArray" },
@@ -139,7 +139,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
       {
         name: "image",
         label: "Image",
-        type: "image",
+        type: "imageWithAlt",
         recommendedSize: "1600×1000px (16:10 landscape)",
       },
       { name: "body", label: "Body", type: "richtext" },
@@ -161,7 +161,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
       {
         name: "cover",
         label: "Cover image",
-        type: "image",
+        type: "imageWithAlt",
         recommendedSize: "1600×1000px (16:10 landscape)",
       },
       { name: "author", label: "Author", type: "text", required: true },
@@ -185,7 +185,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
       {
         name: "portrait",
         label: "Portrait",
-        type: "image",
+        type: "imageWithAlt",
         recommendedSize: "800×800px (1:1 square)",
       },
       { name: "sortOrder", label: "Sort order", type: "number", group: "meta" },
@@ -233,7 +233,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
       {
         name: "image",
         label: "Image",
-        type: "image",
+        type: "imageWithAlt",
         recommendedSize: "1200×800px (3:2 landscape)",
       },
       { name: "sortOrder", label: "Sort order", type: "number", group: "meta" },
@@ -253,7 +253,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
       {
         name: "avatar",
         label: "Avatar",
-        type: "image",
+        type: "imageWithAlt",
         recommendedSize: "400×400px (1:1 square)",
       },
       { name: "sortOrder", label: "Sort order", type: "number", group: "meta" },
