@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/api";
 import { Button, Card, Field, Input, Select, Textarea } from "./ui";
 import { ImagePicker } from "./ImagePicker";
 import { BlocksEditor } from "./BlocksEditor";
+import { SeoPreview } from "./SeoPreview";
 import { useConfirm } from "./Confirm";
 import type { PageDoc } from "@/lib/types";
 
@@ -67,6 +68,69 @@ function loadSeo(p: Record<string, unknown> = {}): Seo {
   };
 }
 
+// Shape of the SeoPage row returned by /api/seo/pages/:path. The Pages-form
+// SEO section is synced with this row so editors can use either surface.
+type SeoPageRow = {
+  id: string;
+  path: string;
+  title: string | null;
+  description: string | null;
+  keywords: string[] | null;
+  ogTitle: string | null;
+  ogDescription: string | null;
+  ogImage: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
+  noFollow: boolean;
+};
+
+function robotsFromFlags(noIndex: boolean, noFollow: boolean): string {
+  return `${noIndex ? "noindex" : "index"},${noFollow ? "nofollow" : "follow"}`;
+}
+
+function flagsFromRobots(robots: string): { noIndex: boolean; noFollow: boolean } {
+  const v = (robots || "").toLowerCase();
+  return { noIndex: v.includes("noindex"), noFollow: v.includes("nofollow") };
+}
+
+// Merge a SeoPage row into the PageForm SEO state. SeoPage values win when
+// non-empty so the SEO admin's Page SEO row is the source of truth for the
+// fields it covers.
+function mergeSeoPageInto(seo: Seo, row: SeoPageRow): Seo {
+  const next = { ...seo };
+  if (row.title) next.seoTitle = row.title;
+  if (row.description) next.seoDescription = row.description;
+  if (row.ogImage) next.seoOgImage = row.ogImage;
+  if (row.keywords && row.keywords.length > 0) next.seoKeywords = row.keywords.join(", ");
+  if (row.canonicalUrl) next.seoCanonical = row.canonicalUrl;
+  if (row.noIndex || row.noFollow) {
+    next.seoRobots = robotsFromFlags(row.noIndex, row.noFollow);
+  }
+  if (row.ogTitle) next.ogTitle = row.ogTitle;
+  if (row.ogDescription) next.ogDescription = row.ogDescription;
+  return next;
+}
+
+// Build the SeoPage upsert payload from PageForm SEO state.
+function seoToSeoPagePayload(seo: Seo) {
+  const flags = flagsFromRobots(seo.seoRobots);
+  const keywords = seo.seoKeywords
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return {
+    title: seo.seoTitle || null,
+    description: seo.seoDescription || null,
+    keywords,
+    ogTitle: seo.ogTitle || null,
+    ogDescription: seo.ogDescription || null,
+    ogImage: seo.seoOgImage || null,
+    canonicalUrl: seo.seoCanonical || null,
+    noIndex: flags.noIndex,
+    noFollow: flags.noFollow,
+  };
+}
+
 export function PageForm({ mode, initial }: Props) {
   const router = useRouter();
   const confirm = useConfirm();
@@ -77,6 +141,7 @@ export function PageForm({ mode, initial }: Props) {
     Array.isArray(initial?.blocks) ? (initial.blocks as Block[]) : [],
   );
   const [seo, setSeo] = useState<Seo>(loadSeo((initial ?? {}) as Record<string, unknown>));
+  const [seoPageSynced, setSeoPageSynced] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +156,31 @@ export function PageForm({ mode, initial }: Props) {
       setSeo(loadSeo(initial as unknown as Record<string, unknown>));
     }
   }, [initial?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pull the matching SeoPage row (path-keyed) and merge its values into the
+  // SEO section so editors see what was set in /seo → Page SEO. SeoPage wins
+  // when it has a value for an overlapping field.
+  useEffect(() => {
+    if (!path || !path.startsWith("/")) {
+      setSeoPageSynced(false);
+      return;
+    }
+    let cancelled = false;
+    api
+      .get<{ page: SeoPageRow | null }>(`/api/seo/pages/${encodeURIComponent(path)}`)
+      .then((r) => {
+        if (cancelled || !r?.page) {
+          if (!cancelled) setSeoPageSynced(false);
+          return;
+        }
+        setSeo((s) => mergeSeoPageInto(s, r.page!));
+        setSeoPageSynced(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
 
   const setSeoField = (k: keyof Seo, v: string) => setSeo((s) => ({ ...s, [k]: v }));
 
@@ -111,6 +201,20 @@ export function PageForm({ mode, initial }: Props) {
     try {
       if (mode === "create") await api.post("/pages", payload);
       else if (initial) await api.patch(`/pages/${initial.id}`, payload);
+
+      // Mirror the SEO subset to the SeoPage row keyed by path so the SEO
+      // admin's Page SEO tab reflects what was just saved here. The website
+      // resolver also reads SeoPage as the per-path layer of the cascade.
+      if (path && path.startsWith("/")) {
+        try {
+          await api.put(`/api/seo/pages/by-path/${encodeURIComponent(path)}`, seoToSeoPagePayload(seo));
+        } catch (e) {
+          // Non-fatal: the Page row was saved. Surface the error but don't
+          // block navigation, since SEO admin can repair the SeoPage row.
+          console.warn("SeoPage sync failed:", e);
+        }
+      }
+
       router.push("/pages");
       router.refresh();
     } catch (e) {
@@ -166,8 +270,43 @@ export function PageForm({ mode, initial }: Props) {
         <BlocksEditor value={blocks} onChange={setBlocks} />
       </Card>
 
+      {path && path.startsWith("/") && (
+        <SeoPreview
+          path={path}
+          item={{
+            title,
+            seoTitle: seo.seoTitle || null,
+            seoDescription: seo.seoDescription || null,
+            seoOgImage: seo.seoOgImage || null,
+            seoKeywords: seo.seoKeywords
+              ? seo.seoKeywords.split(",").map((s) => s.trim()).filter(Boolean)
+              : null,
+            seoOgTitle: seo.ogTitle || null,
+            seoOgDescription: seo.ogDescription || null,
+            seoCanonicalUrl: seo.seoCanonical || null,
+            seoNoIndex: flagsFromRobots(seo.seoRobots).noIndex,
+            seoNoFollow: flagsFromRobots(seo.seoRobots).noFollow,
+          }}
+        />
+      )}
+
       <Card className="p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-muted uppercase tracking-wider">SEO — basics</h3>
+        <div className="flex items-baseline justify-between">
+          <h3 className="text-sm font-semibold text-muted uppercase tracking-wider">SEO — basics</h3>
+          {seoPageSynced && (
+            <span
+              className="text-[11px] text-emerald-700"
+              title="Values shown here include the SeoPage row from SEO → Page SEO. Saving here updates both surfaces."
+            >
+              ✓ synced with SEO admin
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-muted">
+          These fields are mirrored to <strong>SEO → Page SEO</strong> for{" "}
+          <code className="font-mono">{path || "/"}</code>. Editing here also updates that row, so
+          both surfaces always show the same values.
+        </p>
         <Field label="Meta title" help="Falls back to the page title when empty.">
           <Input value={seo.seoTitle} onChange={(e) => setSeoField("seoTitle", e.target.value)} />
         </Field>
