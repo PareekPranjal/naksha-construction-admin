@@ -175,18 +175,15 @@ export function resolveSeo(
 export type CollectionPathHit = { collection: string; slug: string; editPath: string };
 
 export function detectCollectionPath(path: string): CollectionPathHit | null {
-  const m = path.match(/^\/(projects|services|markets|insights|careers)\/([^/]+)\/?$/);
+  const m = path.match(/^\/(projects|services|insights)\/([^/]+)\/?$/);
   if (!m) return null;
   const urlSegment = m[1];
   const slug = m[2];
   // Map URL segment → admin resource key (admin uses /articles for /insights).
-  const adminKey =
-    urlSegment === "insights" ? "articles" : urlSegment === "careers" ? "jobs" : urlSegment;
+  const adminKey = urlSegment === "insights" ? "articles" : urlSegment;
   return {
     collection: adminKey,
     slug,
-    // The admin lists items by id, not slug — caller still needs to look up
-    // the id. We surface the list page link as a useful jump target.
     editPath: `/${adminKey}`,
   };
 }

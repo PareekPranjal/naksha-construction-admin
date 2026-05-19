@@ -12,7 +12,7 @@ import {
 
 type IndexResponse = Record<InternalDocType, InternalDocRef[]>;
 
-const ORDER: InternalDocType[] = ["page", "project", "service", "market", "article", "job", "location"];
+const ORDER: InternalDocType[] = ["page", "project", "service", "article", "location"];
 
 let cache: { at: number; data: IndexResponse } | null = null;
 const TTL_MS = 60_000;
@@ -41,7 +41,7 @@ export function InternalLinkPicker({ onSelect, onClose }: Props) {
   const filtered = useMemo(() => {
     if (!data) return null;
     const q = query.trim().toLowerCase();
-    const out: IndexResponse = { page: [], project: [], service: [], market: [], article: [], job: [], location: [] };
+    const out: IndexResponse = { page: [], project: [], service: [], article: [], location: [] };
     for (const t of ORDER) {
       const list = data[t] ?? [];
       out[t] = q ? list.filter((d) => d.title.toLowerCase().includes(q) || d.slug.toLowerCase().includes(q)) : list;

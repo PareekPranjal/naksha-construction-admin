@@ -89,7 +89,6 @@ export type SeoStats = {
   projects: { total: number; optimized: number; missing: number };
   services: { total: number; optimized: number; missing: number };
   articles: { total: number; optimized: number; missing: number };
-  markets: { total: number; optimized: number; missing: number };
   tracking: {
     googleSiteVerification: boolean;
     googleAnalyticsId: boolean;

@@ -206,7 +206,6 @@ function StatsBar({ stats }: { stats: SeoStats }) {
     { label: "Projects", value: `${stats.projects.optimized}/${stats.projects.total}` },
     { label: "Services", value: `${stats.services.optimized}/${stats.services.total}` },
     { label: "Articles", value: `${stats.articles.optimized}/${stats.articles.total}` },
-    { label: "Markets", value: `${stats.markets.optimized}/${stats.markets.total}` },
   ];
   const tracking = [
     { label: "GSC verification", set: stats.tracking.googleSiteVerification },

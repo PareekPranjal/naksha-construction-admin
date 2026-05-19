@@ -15,8 +15,6 @@ import {
   HeartHandshake,
   Mail,
   AlignLeft,
-  Grid2x2,
-  Briefcase,
   Newspaper,
   Building2,
   Wrench,
@@ -25,6 +23,9 @@ import {
   Images,
   AtSign,
   Map as MapIcon,
+  Columns,
+  Bookmark,
+  LayoutGrid,
 } from "lucide-react";
 import { Button, Card, Field, Input, Select, Textarea } from "./ui";
 import { ImagePicker } from "./ImagePicker";
@@ -98,6 +99,30 @@ function HeroEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlo
           <option value="sm">Small (40% viewport)</option>
         </Select>
       </Field>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Field label="Alignment" help="Centered works best for title-only banners.">
+          <Select
+            value={(typeof value.alignment === "string" && value.alignment) || "left"}
+            onChange={(e) => set("alignment", e.target.value)}
+          >
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+          </Select>
+        </Field>
+        <Field
+          label="Overlay strength"
+          help="How dark the tint over the background image is."
+        >
+          <Select
+            value={(typeof value.overlayStrength === "string" && value.overlayStrength) || "medium"}
+            onChange={(e) => set("overlayStrength", e.target.value)}
+          >
+            <option value="soft">Soft (30%)</option>
+            <option value="medium">Medium (45%)</option>
+            <option value="heavy">Heavy (65%)</option>
+          </Select>
+        </Field>
+      </div>
     </div>
   );
 }
@@ -535,13 +560,332 @@ function LocationsEditor({ value, onChange }: { value: AnyBlock; onChange: (v: A
   );
 }
 
+function TwoColumnEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlock) => void }) {
+  const set = (k: string, v: unknown) => onChange({ ...value, [k]: v });
+  const bullets = Array.isArray(value.bullets) ? (value.bullets as string[]) : [];
+  const image =
+    typeof value.image === "object" && value.image
+      ? (value.image as { url: string; alt: string })
+      : null;
+  const updateBullet = (i: number, v: string) =>
+    set(
+      "bullets",
+      bullets.map((b, idx) => (idx === i ? v : b)),
+    );
+  const addBullet = () => set("bullets", [...bullets, ""]);
+  const removeBullet = (i: number) =>
+    set(
+      "bullets",
+      bullets.filter((_, idx) => idx !== i),
+    );
+  const moveBullet = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= bullets.length) return;
+    const next = [...bullets];
+    [next[i], next[j]] = [next[j], next[i]];
+    set("bullets", next);
+  };
+  return (
+    <div className="space-y-4">
+      <Field label="Eyebrow (optional)">
+        <Input value={strField(value.eyebrow)} onChange={(e) => set("eyebrow", e.target.value)} />
+      </Field>
+      <Field label="Heading" required>
+        <Input value={strField(value.heading)} onChange={(e) => set("heading", e.target.value)} />
+      </Field>
+      <Field label="Body" help="Rich text — supports headings, lists, links.">
+        <RichTextEditor
+          id="twocol-body"
+          value={strField(value.body)}
+          onChange={(html) => set("body", html)}
+        />
+      </Field>
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between">
+          <p className="text-xs font-medium text-muted uppercase tracking-wider">Bullets (optional)</p>
+          <Button variant="ghost" type="button" onClick={addBullet}>
+            <Plus className="h-3.5 w-3.5" /> Add bullet
+          </Button>
+        </div>
+        {bullets.length === 0 ? (
+          <p className="text-xs text-muted">No bullets — leave empty to skip the list.</p>
+        ) : (
+          <ul className="space-y-2">
+            {bullets.map((b, i) => (
+              <li key={i} className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+                <div className="flex flex-col">
+                  <button
+                    type="button"
+                    onClick={() => moveBullet(i, -1)}
+                    disabled={i === 0}
+                    className="text-muted hover:text-ink disabled:opacity-30"
+                  >
+                    <ChevronUp className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveBullet(i, 1)}
+                    disabled={i === bullets.length - 1}
+                    className="text-muted hover:text-ink disabled:opacity-30"
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </div>
+                <Input value={b} onChange={(e) => updateBullet(i, e.target.value)} />
+                <button
+                  type="button"
+                  onClick={() => removeBullet(i)}
+                  className="text-red-600 hover:text-red-700 p-1"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <Field label="Image">
+        <ImagePicker
+          value={image?.url ?? null}
+          onChange={(url) => set("image", url ? { url, alt: image?.alt ?? "" } : null)}
+          recommendedSize="1400×900px (4:3 landscape)"
+        />
+      </Field>
+      {image?.url && (
+        <Field label="Image alt text" help="Describe the image for screen readers and SEO.">
+          <Input
+            value={image.alt}
+            onChange={(e) => set("image", { url: image.url, alt: e.target.value })}
+          />
+        </Field>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Field label="Image position">
+          <Select
+            value={typeof value.imagePosition === "string" ? value.imagePosition : "right"}
+            onChange={(e) => set("imagePosition", e.target.value)}
+          >
+            <option value="right">Right</option>
+            <option value="left">Left</option>
+          </Select>
+        </Field>
+        <Field label="Background">
+          <Select
+            value={typeof value.background === "string" ? value.background : "paper"}
+            onChange={(e) => set("background", e.target.value)}
+          >
+            <option value="paper">Paper (white)</option>
+            <option value="tint">Tinted</option>
+          </Select>
+        </Field>
+      </div>
+    </div>
+  );
+}
+
+function CtaStripEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlock) => void }) {
+  const set = (k: string, v: unknown) => onChange({ ...value, [k]: v });
+  const cta =
+    typeof value.cta === "object" && value.cta
+      ? (value.cta as { label?: string; href?: string })
+      : { label: "", href: "" };
+  return (
+    <div className="space-y-4">
+      <Field label="Text (left side)" required>
+        <Input value={strField(value.text)} onChange={(e) => set("text", e.target.value)} />
+      </Field>
+      <Field label="Sub-text (optional second line)">
+        <Input value={strField(value.textSub)} onChange={(e) => set("textSub", e.target.value)} />
+      </Field>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Field label="Button label" required>
+          <Input
+            value={cta.label ?? ""}
+            onChange={(e) => set("cta", { ...cta, label: e.target.value })}
+          />
+        </Field>
+        <Field label="Button URL" required>
+          <Input
+            value={cta.href ?? ""}
+            onChange={(e) => set("cta", { ...cta, href: e.target.value })}
+          />
+        </Field>
+      </div>
+      <Field label="Background">
+        <Select
+          value={typeof value.background === "string" ? value.background : "tint"}
+          onChange={(e) => set("background", e.target.value)}
+        >
+          <option value="tint">Tinted (default)</option>
+          <option value="paper">Paper (white)</option>
+          <option value="dark">Dark (ink)</option>
+        </Select>
+      </Field>
+    </div>
+  );
+}
+
+function StyleCardsEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlock) => void }) {
+  const set = (k: string, v: unknown) => onChange({ ...value, [k]: v });
+  const cards = Array.isArray(value.cards)
+    ? (value.cards as { heading: string; body: string }[])
+    : [];
+  const updateCard = (i: number, patch: Partial<{ heading: string; body: string }>) =>
+    set(
+      "cards",
+      cards.map((c, idx) => (idx === i ? { ...c, ...patch } : c)),
+    );
+  const addCard = () => set("cards", [...cards, { heading: "", body: "" }]);
+  const removeCard = (i: number) =>
+    set(
+      "cards",
+      cards.filter((_, idx) => idx !== i),
+    );
+  const moveCard = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= cards.length) return;
+    const next = [...cards];
+    [next[i], next[j]] = [next[j], next[i]];
+    set("cards", next);
+  };
+  return (
+    <div className="space-y-4">
+      <Field label="Eyebrow (optional)">
+        <Input value={strField(value.eyebrow)} onChange={(e) => set("eyebrow", e.target.value)} />
+      </Field>
+      <Field label="Section heading (optional)">
+        <Input value={strField(value.heading)} onChange={(e) => set("heading", e.target.value)} />
+      </Field>
+      <Field label="Intro (optional, rich text)">
+        <RichTextEditor
+          id="stylecards-intro"
+          value={strField(value.intro)}
+          onChange={(html) => set("intro", html)}
+        />
+      </Field>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Field label="Columns at desktop">
+          <Select
+            value={String(typeof value.columns === "number" ? value.columns : 3)}
+            onChange={(e) => set("columns", Number(e.target.value))}
+          >
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </Select>
+        </Field>
+        <Field label="Background">
+          <Select
+            value={typeof value.background === "string" ? value.background : "tint"}
+            onChange={(e) => set("background", e.target.value)}
+          >
+            <option value="tint">Tinted (default)</option>
+            <option value="paper">Paper (white)</option>
+          </Select>
+        </Field>
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between">
+          <p className="text-xs font-medium text-muted uppercase tracking-wider">Cards</p>
+          <Button variant="ghost" type="button" onClick={addCard}>
+            <Plus className="h-3.5 w-3.5" /> Add card
+          </Button>
+        </div>
+        {cards.length === 0 ? (
+          <p className="text-xs text-muted py-2">No cards yet.</p>
+        ) : (
+          <ul className="space-y-3">
+            {cards.map((c, i) => (
+              <li key={i} className="rounded-md border border-rule bg-rule/10 p-3 space-y-2">
+                <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+                  <div className="flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => moveCard(i, -1)}
+                      disabled={i === 0}
+                      className="text-muted hover:text-ink disabled:opacity-30"
+                    >
+                      <ChevronUp className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveCard(i, 1)}
+                      disabled={i === cards.length - 1}
+                      className="text-muted hover:text-ink disabled:opacity-30"
+                    >
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <Input
+                    placeholder="Card heading"
+                    value={c.heading}
+                    onChange={(e) => updateCard(i, { heading: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeCard(i)}
+                    className="text-red-600 hover:text-red-700 p-1"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <Textarea
+                  placeholder="Card body"
+                  value={c.body}
+                  onChange={(e) => updateCard(i, { body: e.target.value })}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CollageEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlock) => void }) {
+  const set = (k: string, v: unknown) => onChange({ ...value, [k]: v });
+  const images = Array.isArray(value.images)
+    ? (value.images as { url: string; alt?: string }[])
+    : [];
+  return (
+    <div className="space-y-4">
+      <Field label="Layout">
+        <Select
+          value={typeof value.layout === "string" ? value.layout : "asymmetric-3"}
+          onChange={(e) => set("layout", e.target.value)}
+        >
+          <option value="asymmetric-3">Asymmetric 3-up (Pinterest-style)</option>
+          <option value="grid-3">3-column grid</option>
+          <option value="grid-4">4-column grid</option>
+        </Select>
+      </Field>
+      <Field label="Images" help="For asymmetric layout, add exactly 3 images.">
+        <ImageArrayPicker
+          value={images}
+          onChange={(next) => set("images", next)}
+          recommendedSize="1200×900px"
+        />
+      </Field>
+    </div>
+  );
+}
+
 // ── Block registry ───────────────────────────────────────────────────────────
 const BLOCK_DEFS: Record<string, BlockDef> = {
   hero: {
     label: "Hero",
     description: "Big intro at the top of a page.",
     icon: ImageIcon,
-    defaults: () => ({ type: "hero", title: "", subtitle: "", ctaLabel: "", ctaHref: "" }),
+    defaults: () => ({
+      type: "hero",
+      title: "",
+      subtitle: "",
+      ctaLabel: "",
+      ctaHref: "",
+      alignment: "left",
+      overlayStrength: "medium",
+    }),
     Editor: HeroEditor,
   },
   stats: {
@@ -628,13 +972,6 @@ const BLOCK_DEFS: Record<string, BlockDef> = {
     defaults: () => ({ type: "testimonials", source: "testimonials" }),
     Editor: makeSourceEditor("testimonials", "testimonials"),
   },
-  marketsGrid: {
-    label: "Markets grid",
-    description: "Grid of all markets from the Markets collection.",
-    icon: Grid2x2,
-    defaults: () => ({ type: "marketsGrid", source: "markets" }),
-    Editor: makeSourceEditor("markets", "markets"),
-  },
   servicesGrid: {
     label: "Services grid",
     description: "Grid of all services from the Services collection.",
@@ -667,22 +1004,87 @@ const BLOCK_DEFS: Record<string, BlockDef> = {
     defaults: () => ({ type: "leadership", source: "leaders" }),
     Editor: makeSourceEditor("leadership", "leaders"),
   },
-  openRoles: {
-    label: "Open roles",
-    description: "Pulls from the Jobs collection.",
-    icon: Briefcase,
-    defaults: () => ({ type: "openRoles", source: "jobs" }),
-    Editor: makeSourceEditor("open roles", "jobs"),
-  },
   locationsGrid: {
     label: "Locations grid",
     icon: MapPin,
     defaults: () => ({ type: "locationsGrid", source: "locations", compact: false }),
     Editor: LocationsEditor,
   },
+  twoColumn: {
+    label: "Two-column",
+    description: "Side-by-side heading + rich text + optional bullets, with an image.",
+    icon: Columns,
+    defaults: () => ({
+      type: "twoColumn",
+      eyebrow: "",
+      heading: "",
+      body: "",
+      bullets: [],
+      image: null,
+      imagePosition: "right",
+      background: "paper",
+    }),
+    Editor: TwoColumnEditor,
+  },
+  ctaStrip: {
+    label: "CTA strip",
+    description: "Full-width band with a green serif line on the left and a button on the right.",
+    icon: Bookmark,
+    defaults: () => ({
+      type: "ctaStrip",
+      text: "",
+      textSub: "",
+      cta: { label: "Contact us", href: "/contact" },
+      background: "tint",
+    }),
+    Editor: CtaStripEditor,
+  },
+  styleCards: {
+    label: "Style cards",
+    description: "Heading + grid of text-only cards (used for the interior styles section).",
+    icon: LayoutGrid,
+    defaults: () => ({
+      type: "styleCards",
+      eyebrow: "",
+      heading: "",
+      intro: "",
+      columns: 3,
+      background: "tint",
+      cards: [],
+    }),
+    Editor: StyleCardsEditor,
+  },
+  collage: {
+    label: "Image collage",
+    description: "Pinterest-style 3-image collage or a regular 3/4-column image grid.",
+    icon: Images,
+    defaults: () => ({ type: "collage", layout: "asymmetric-3", images: [] }),
+    Editor: CollageEditor,
+  },
 };
 
-const BLOCK_TYPE_KEYS = Object.keys(BLOCK_DEFS);
+// Groups for the picker modal — purely visual; types/keys are unchanged.
+const BLOCK_GROUPS: { heading: string; keys: string[] }[] = [
+  { heading: "Banners & CTAs", keys: ["hero", "ctaStrip", "cta"] },
+  { heading: "Content sections", keys: ["intro", "twoColumn", "longform", "styleCards"] },
+  { heading: "Imagery", keys: ["gallery", "collage"] },
+  {
+    heading: "Lists & data",
+    keys: [
+      "stats",
+      "timeline",
+      "commitments",
+      "testimonials",
+      "servicesGrid",
+      "projectsGrid",
+      "projectsFeatured",
+      "articlesGrid",
+      "leadership",
+      "locationsGrid",
+    ],
+  },
+  { heading: "Forms & contact", keys: ["contactForm", "emailQuery", "map"] },
+];
 
 // ── Main editor ──────────────────────────────────────────────────────────────
 export function BlocksEditor({
@@ -784,29 +1186,42 @@ export function BlocksEditor({
           <p className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
             Choose a block to add
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {BLOCK_TYPE_KEYS.map((k) => {
-              const def = BLOCK_DEFS[k];
-              const Icon = def.icon;
+          <div className="space-y-5">
+            {BLOCK_GROUPS.map((group) => {
+              const keys = group.keys.filter((k) => BLOCK_DEFS[k]);
+              if (keys.length === 0) return null;
               return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => add(k)}
-                  className="text-left rounded-md border border-rule bg-white p-3 hover:border-ink"
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon className="h-4 w-4 text-muted" />
-                    <span className="text-sm font-medium">{def.label}</span>
+                <div key={group.heading}>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    {group.heading}
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {keys.map((k) => {
+                      const def = BLOCK_DEFS[k];
+                      const Icon = def.icon;
+                      return (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => add(k)}
+                          className="text-left rounded-md border border-rule bg-white p-3 hover:border-ink"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-muted" />
+                            <span className="text-sm font-medium">{def.label}</span>
+                          </div>
+                          {def.description && (
+                            <p className="mt-1 text-xs text-muted">{def.description}</p>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-                  {def.description && (
-                    <p className="mt-1 text-xs text-muted">{def.description}</p>
-                  )}
-                </button>
+                </div>
               );
             })}
           </div>
-          <div className="mt-3">
+          <div className="mt-4">
             <Button variant="secondary" type="button" onClick={() => setPicker(false)}>
               Cancel
             </Button>

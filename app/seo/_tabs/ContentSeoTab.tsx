@@ -16,16 +16,14 @@ const COLLECTION_URL_PREFIX: Record<CollectionKey, string> = {
   projects: "/projects",
   services: "/services",
   articles: "/insights",
-  markets: "/markets",
 };
 
-type CollectionKey = "projects" | "services" | "articles" | "markets";
+type CollectionKey = "projects" | "services" | "articles";
 
 const COLLECTION_TABS: { id: CollectionKey; label: string }[] = [
   { id: "projects", label: "Projects" },
   { id: "services", label: "Services" },
   { id: "articles", label: "Articles" },
-  { id: "markets", label: "Markets" },
 ];
 
 type ContentMap = Record<CollectionKey, ContentRow[]>;
@@ -34,7 +32,6 @@ const EMPTY_CONTENT: ContentMap = {
   projects: [],
   services: [],
   articles: [],
-  markets: [],
 };
 
 export function ContentSeoTab() {

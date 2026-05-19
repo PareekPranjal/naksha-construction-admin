@@ -65,9 +65,7 @@ const PUBLIC_URL_MAP: Record<
 > = {
   projects:  { urlPrefix: "/projects",  titleField: "title", imageField: "coverImage", descField: "summary" },
   services:  { urlPrefix: "/services",  titleField: "title", imageField: "icon",       descField: "summary" },
-  markets:   { urlPrefix: "/markets",   titleField: "title", imageField: "image",      descField: "summary" },
   articles:  { urlPrefix: "/insights",  titleField: "title", imageField: "cover",      descField: "excerpt" },
-  jobs:      { urlPrefix: "/careers",   titleField: "title", imageField: "",           descField: "summary" },
   leaders:   { urlPrefix: "",           titleField: "name",  imageField: "portrait" },
   locations: { urlPrefix: "",           titleField: "city",  imageField: "image" },
 };
