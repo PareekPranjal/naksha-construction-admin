@@ -21,6 +21,7 @@ import {
   Users,
   MapPin,
   Images,
+  Youtube,
   AtSign,
   Map as MapIcon,
   Columns,
@@ -871,6 +872,279 @@ function CollageEditor({ value, onChange }: { value: AnyBlock; onChange: (v: Any
   );
 }
 
+function VideoGalleryEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlock) => void }) {
+  type Video = { url: string; title: string };
+  const videos: Video[] = Array.isArray(value.videos) ? (value.videos as Video[]) : [];
+  const set = (k: string, v: unknown) => onChange({ ...value, [k]: v });
+  const updateVideo = (i: number, patch: Partial<Video>) =>
+    onChange({
+      ...value,
+      videos: videos.map((it, idx) => (idx === i ? { ...it, ...patch } : it)),
+    });
+  const addVideo = () => onChange({ ...value, videos: [...videos, { url: "", title: "" }] });
+  const removeVideo = (i: number) =>
+    onChange({ ...value, videos: videos.filter((_, idx) => idx !== i) });
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= videos.length) return;
+    const next = [...videos];
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange({ ...value, videos: next });
+  };
+  return (
+    <div className="space-y-4">
+      <Field label="Heading">
+        <Input value={strField(value.heading)} onChange={(e) => set("heading", e.target.value)} />
+      </Field>
+      <Field label="Intro (optional)">
+        <RichTextEditor
+          id="video-gallery-intro"
+          value={strField(value.intro)}
+          onChange={(html) => set("intro", html)}
+        />
+      </Field>
+      <div className="space-y-3">
+        <div className="flex items-baseline justify-between">
+          <p className="text-xs font-medium text-muted uppercase tracking-wider">Videos</p>
+          <Button variant="ghost" type="button" onClick={addVideo}>
+            <Plus className="h-3.5 w-3.5" /> Add video
+          </Button>
+        </div>
+        {videos.map((v, i) => (
+          <div key={i} className="rounded-md border border-rule bg-rule/10 p-3 space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-2 items-start">
+              <Input
+                placeholder="Title"
+                value={v.title ?? ""}
+                onChange={(e) => updateVideo(i, { title: e.target.value })}
+              />
+              <button
+                type="button"
+                onClick={() => move(i, -1)}
+                disabled={i === 0}
+                className="text-muted hover:text-ink p-1 disabled:opacity-30"
+                aria-label="Move up"
+              >
+                <ChevronUp className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => move(i, 1)}
+                disabled={i === videos.length - 1}
+                className="text-muted hover:text-ink p-1 disabled:opacity-30"
+                aria-label="Move down"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => removeVideo(i)}
+                className="text-red-600 hover:text-red-700 p-1"
+                aria-label="Remove"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+            <Input
+              placeholder="YouTube URL (watch / embed / shorts / youtu.be)"
+              value={v.url ?? ""}
+              onChange={(e) => updateVideo(i, { url: e.target.value })}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Field label="Channel URL">
+          <Input
+            placeholder="https://www.youtube.com/@yourchannel"
+            value={strField(value.channelUrl)}
+            onChange={(e) => set("channelUrl", e.target.value)}
+          />
+        </Field>
+        <Field label="Channel link label">
+          <Input
+            placeholder="See more on YouTube"
+            value={strField(value.channelLinkLabel)}
+            onChange={(e) => set("channelLinkLabel", e.target.value)}
+          />
+        </Field>
+      </div>
+    </div>
+  );
+}
+
+function SplitFeatureEditor({ value, onChange }: { value: AnyBlock; onChange: (v: AnyBlock) => void }) {
+  const set = (k: string, v: unknown) => onChange({ ...value, [k]: v });
+  const cards = Array.isArray(value.cards)
+    ? (value.cards as { title: string; body?: string; icon?: string }[])
+    : [];
+  const bg = typeof value.background === "string" ? value.background : "dark";
+  const backgroundImage =
+    typeof value.backgroundImage === "object" && value.backgroundImage
+      ? (value.backgroundImage as { url: string; alt: string })
+      : null;
+  const updateCard = (i: number, patch: Partial<{ title: string; body: string; icon: string }>) =>
+    set(
+      "cards",
+      cards.map((c, idx) => (idx === i ? { ...c, ...patch } : c)),
+    );
+  const addCard = () => set("cards", [...cards, { title: "", body: "", icon: "" }]);
+  const removeCard = (i: number) =>
+    set(
+      "cards",
+      cards.filter((_, idx) => idx !== i),
+    );
+  const moveCard = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= cards.length) return;
+    const next = [...cards];
+    [next[i], next[j]] = [next[j], next[i]];
+    set("cards", next);
+  };
+  return (
+    <div className="space-y-4">
+      <Field label="Eyebrow (optional)">
+        <Input value={strField(value.eyebrow)} onChange={(e) => set("eyebrow", e.target.value)} />
+      </Field>
+      <Field label="Heading" required>
+        <Input value={strField(value.heading)} onChange={(e) => set("heading", e.target.value)} />
+      </Field>
+      <Field label="Body" help="Rich text — supports headings, lists, links.">
+        <RichTextEditor
+          id="splitfeature-body"
+          value={strField(value.body)}
+          onChange={(html) => set("body", html)}
+        />
+      </Field>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Field label="Text position">
+          <Select
+            value={typeof value.textPosition === "string" ? value.textPosition : "left"}
+            onChange={(e) => set("textPosition", e.target.value)}
+          >
+            <option value="left">Text left, cards right</option>
+            <option value="right">Cards left, text right</option>
+          </Select>
+        </Field>
+        <Field label="Background">
+          <Select value={bg} onChange={(e) => set("background", e.target.value)}>
+            <option value="paper">Paper (white)</option>
+            <option value="tint">Tinted</option>
+            <option value="dark">Dark</option>
+            <option value="image">Image with overlay</option>
+          </Select>
+        </Field>
+      </div>
+      {bg === "image" && (
+        <>
+          <Field label="Background image">
+            <ImagePicker
+              value={backgroundImage?.url ?? null}
+              onChange={(url) =>
+                set("backgroundImage", url ? { url, alt: backgroundImage?.alt ?? "" } : null)
+              }
+              recommendedSize="2400×1400px (wide hero)"
+            />
+          </Field>
+          {backgroundImage?.url && (
+            <Field label="Background image alt">
+              <Input
+                value={backgroundImage.alt}
+                onChange={(e) =>
+                  set("backgroundImage", { url: backgroundImage.url, alt: e.target.value })
+                }
+              />
+            </Field>
+          )}
+        </>
+      )}
+      {(bg === "image" || bg === "dark") && (
+        <Field label="Overlay strength" help="Darkens the background so the text stays readable.">
+          <Select
+            value={typeof value.overlayStrength === "string" ? value.overlayStrength : "medium"}
+            onChange={(e) => set("overlayStrength", e.target.value)}
+          >
+            <option value="soft">Soft</option>
+            <option value="medium">Medium</option>
+            <option value="heavy">Heavy</option>
+          </Select>
+        </Field>
+      )}
+      <Field label="Card columns">
+        <Select
+          value={String(typeof value.cardColumns === "number" ? value.cardColumns : 2)}
+          onChange={(e) => set("cardColumns", Number(e.target.value))}
+        >
+          <option value="2">2 (2×2 grid)</option>
+          <option value="3">3 (3-up grid)</option>
+        </Select>
+      </Field>
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between">
+          <p className="text-xs font-medium text-muted uppercase tracking-wider">Cards</p>
+          <Button variant="ghost" type="button" onClick={addCard}>
+            <Plus className="h-3.5 w-3.5" /> Add card
+          </Button>
+        </div>
+        {cards.length === 0 ? (
+          <p className="text-xs text-muted">No cards — add at least one to populate the grid.</p>
+        ) : (
+          <ul className="space-y-3">
+            {cards.map((c, i) => (
+              <li key={i} className="rounded-md border border-rule p-3">
+                <div className="grid grid-cols-[auto_1fr_auto] items-start gap-2">
+                  <div className="flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => moveCard(i, -1)}
+                      disabled={i === 0}
+                      className="text-muted hover:text-ink disabled:opacity-30"
+                    >
+                      <ChevronUp className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveCard(i, 1)}
+                      disabled={i === cards.length - 1}
+                      className="text-muted hover:text-ink disabled:opacity-30"
+                    >
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Title"
+                      value={c.title ?? ""}
+                      onChange={(e) => updateCard(i, { title: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Body (optional)"
+                      value={c.body ?? ""}
+                      onChange={(e) => updateCard(i, { body: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Icon — lucide name (Handshake, Users, PencilRuler, House, Hammer, HardHat, Building2, ClipboardCheck) or paste an image URL"
+                      value={c.icon ?? ""}
+                      onChange={(e) => updateCard(i, { icon: e.target.value })}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeCard(i)}
+                    className="text-red-600 hover:text-red-700 p-1"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Block registry ───────────────────────────────────────────────────────────
 const BLOCK_DEFS: Record<string, BlockDef> = {
   hero: {
@@ -1061,13 +1335,45 @@ const BLOCK_DEFS: Record<string, BlockDef> = {
     defaults: () => ({ type: "collage", layout: "asymmetric-3", images: [] }),
     Editor: CollageEditor,
   },
+  videoGallery: {
+    label: "Video gallery",
+    description: "Grid of YouTube videos with optional channel link.",
+    icon: Youtube,
+    defaults: () => ({
+      type: "videoGallery",
+      heading: "",
+      intro: "",
+      videos: [],
+      channelUrl: "",
+      channelLinkLabel: "See more on YouTube",
+    }),
+    Editor: VideoGalleryEditor,
+  },
+  splitFeature: {
+    label: "Split feature",
+    description: "Two-column band: text on one side, card grid on the other. Supports a dark/image background.",
+    icon: LayoutGrid,
+    defaults: () => ({
+      type: "splitFeature",
+      eyebrow: "",
+      heading: "",
+      body: "",
+      textPosition: "left",
+      background: "dark",
+      backgroundImage: null,
+      overlayStrength: "heavy",
+      cards: [],
+      cardColumns: 2,
+    }),
+    Editor: SplitFeatureEditor,
+  },
 };
 
 // Groups for the picker modal — purely visual; types/keys are unchanged.
 const BLOCK_GROUPS: { heading: string; keys: string[] }[] = [
   { heading: "Banners & CTAs", keys: ["hero", "ctaStrip", "cta"] },
-  { heading: "Content sections", keys: ["intro", "twoColumn", "longform", "styleCards"] },
-  { heading: "Imagery", keys: ["gallery", "collage"] },
+  { heading: "Content sections", keys: ["intro", "twoColumn", "splitFeature", "longform", "styleCards"] },
+  { heading: "Imagery", keys: ["gallery", "collage", "videoGallery"] },
   {
     heading: "Lists & data",
     keys: [
