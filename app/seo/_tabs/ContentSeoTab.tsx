@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Wand2, Pencil, CheckCircle2, AlertCircle } from "lucide-react";
+import { Wand2, Pencil, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { Button, Card, Field, Input, Textarea } from "@/components/ui";
 import { ImagePicker } from "@/components/ImagePicker";
 import { CharCount } from "@/components/CharCount";
-import { KeywordsInput } from "@/components/KeywordsInput";
+import { PrimaryKeywordInput } from "@/components/PrimaryKeywordInput";
+import { SecondaryKeywordsInput } from "@/components/SecondaryKeywordsInput";
 import { SeoPreview } from "@/components/SeoPreview";
 import { Tabs } from "@/components/Tabs";
 import { cn } from "@/lib/cn";
@@ -71,9 +72,15 @@ export function ContentSeoTab() {
     }
   }
 
+  // A row is "fully optimized" when it has title + description (from
+  // hasSEO) AND a primary keyword. A row that's only missing the primary
+  // keyword shows amber, not green — see status cell below.
+  const isFullyOptimized = (r: ContentRow) =>
+    r.hasSEO && Boolean(r.seoPrimaryKeyword && r.seoPrimaryKeyword.trim());
+
   const rows = data[active] ?? [];
   const total = rows.length;
-  const optimized = rows.filter((r) => r.hasSEO).length;
+  const optimized = rows.filter((r) => isFullyOptimized(r)).length;
   const pct = total === 0 ? 0 : Math.round((optimized / total) * 100);
 
   return (
@@ -136,13 +143,20 @@ export function ContentSeoTab() {
                 <tr key={r.id} className="border-t border-rule">
                   <td className="py-2 font-medium">{r.title}</td>
                   <td className="py-2">
-                    {r.hasSEO ? (
-                      <span className="inline-flex items-center gap-1 text-emerald-700 text-xs">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Optimized
-                      </span>
-                    ) : (
+                    {!r.hasSEO ? (
                       <span className="inline-flex items-center gap-1 text-red-600 text-xs">
                         <AlertCircle className="h-3.5 w-3.5" /> Missing
+                      </span>
+                    ) : !r.seoPrimaryKeyword ? (
+                      <span
+                        className="inline-flex items-center gap-1 text-amber-700 text-xs"
+                        title="Has SEO title + description but no primary keyword set"
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5" /> No primary
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-emerald-700 text-xs">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Optimized
                       </span>
                     )}
                   </td>
@@ -196,7 +210,18 @@ function ContentSeoModal({
   const [seoTitle, setSeoTitle] = useState(row.seoTitle ?? "");
   const [seoDescription, setSeoDescription] = useState(row.seoDescription ?? "");
   const [seoOgImage, setSeoOgImage] = useState(row.seoOgImage ?? "");
-  const [seoKeywords, setSeoKeywords] = useState<string[]>(row.seoKeywords ?? []);
+  // Bootstrap the new fields from legacy seoKeywords when the row hasn't been
+  // migrated yet, so editors don't see empty inputs on rows that already had
+  // a single combined list filled in.
+  const legacyKeywords = row.seoKeywords ?? [];
+  const [seoPrimaryKeyword, setSeoPrimaryKeyword] = useState<string>(
+    row.seoPrimaryKeyword ?? legacyKeywords[0] ?? "",
+  );
+  const [seoSecondaryKeywords, setSeoSecondaryKeywords] = useState<string[]>(
+    row.seoSecondaryKeywords?.length
+      ? row.seoSecondaryKeywords
+      : legacyKeywords.slice(1),
+  );
   const [seoOgTitle, setSeoOgTitle] = useState(row.seoOgTitle ?? "");
   const [seoOgDescription, setSeoOgDescription] = useState(row.seoOgDescription ?? "");
   const [seoCanonicalUrl, setSeoCanonicalUrl] = useState(row.seoCanonicalUrl ?? "");
@@ -209,11 +234,18 @@ function ContentSeoModal({
     setSaving(true);
     setError(null);
     try {
+      // Combined list for the legacy seoKeywords column — kept in sync for one
+      // release so any consumer still reading it stays correct.
+      const combined = [seoPrimaryKeyword, ...seoSecondaryKeywords]
+        .map((s) => s.trim())
+        .filter(Boolean);
       await api.patch(`/api/seo/${collection}/${row.id}`, {
         seoTitle: seoTitle || null,
         seoDescription: seoDescription || null,
         seoOgImage: seoOgImage || null,
-        seoKeywords,
+        seoKeywords: combined,
+        seoPrimaryKeyword: seoPrimaryKeyword.trim() || null,
+        seoSecondaryKeywords,
         seoOgTitle: seoOgTitle || null,
         seoOgDescription: seoOgDescription || null,
         seoCanonicalUrl: seoCanonicalUrl || null,
@@ -258,11 +290,17 @@ function ContentSeoModal({
               <CharCount value={seoDescription} type="description" />
             </div>
           </Field>
-          <Field label="SEO keywords" help='Comma-separated. Used in <meta name="keywords"> and JSON-LD.'>
-            <KeywordsInput
-              value={seoKeywords}
-              onChange={setSeoKeywords}
-              placeholder="construction Jaipur, design-build, …"
+          <Field label="Primary keyword" help="The one focus keyword this page is optimised for.">
+            <PrimaryKeywordInput
+              value={seoPrimaryKeyword}
+              onChange={setSeoPrimaryKeyword}
+              placeholder="construction company Jaipur"
+            />
+          </Field>
+          <Field label="Secondary keywords" help="3–5 supporting / LSI variants. Comma-separated.">
+            <SecondaryKeywordsInput
+              value={seoSecondaryKeywords}
+              onChange={setSeoSecondaryKeywords}
             />
           </Field>
           <Field label="OG image" help="1200×630 social share image.">
@@ -324,7 +362,15 @@ function ContentSeoModal({
                 seoTitle: seoTitle || null,
                 seoDescription: seoDescription || null,
                 seoOgImage: seoOgImage || null,
-                seoKeywords: seoKeywords.length > 0 ? seoKeywords : null,
+                // Legacy field kept in sync for the "All keywords (legacy)"
+                // preview row.
+                seoKeywords:
+                  seoPrimaryKeyword || seoSecondaryKeywords.length
+                    ? [seoPrimaryKeyword, ...seoSecondaryKeywords].filter(Boolean)
+                    : null,
+                seoPrimaryKeyword: seoPrimaryKeyword || null,
+                seoSecondaryKeywords:
+                  seoSecondaryKeywords.length > 0 ? seoSecondaryKeywords : null,
                 seoOgTitle: seoOgTitle || null,
                 seoOgDescription: seoOgDescription || null,
                 seoCanonicalUrl: seoCanonicalUrl || null,

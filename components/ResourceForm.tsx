@@ -9,6 +9,8 @@ import { ImagePicker } from "./ImagePicker";
 import { ImageArrayPicker } from "./ImageArrayPicker";
 import { TagsInput } from "./TagsInput";
 import { KeywordsInput } from "./KeywordsInput";
+import { PrimaryKeywordInput } from "./PrimaryKeywordInput";
+import { SecondaryKeywordsInput } from "./SecondaryKeywordsInput";
 import { RichTextEditor } from "./RichTextEditor";
 import { useConfirm } from "./Confirm";
 import { SeoPreview } from "./SeoPreview";
@@ -36,7 +38,10 @@ function defaultValue(f: FieldDef): unknown {
     case "stringArray":
     case "imageArray":
     case "keywords":
+    case "secondaryKeywords":
       return [];
+    case "primaryKeyword":
+      return "";
     case "boolean":
       return false;
     case "json":
@@ -134,6 +139,19 @@ export function ResourceForm({ resource, initial, mode, id }: Props) {
           const a = values[altKey(f.name)];
           payload[altKey(f.name)] = typeof a === "string" && a.length > 0 ? a : null;
         }
+      }
+      // Keep the legacy seoKeywords column in sync for one release. When a
+      // resource exposes primary + secondary inputs but no explicit
+      // seoKeywords field, mirror their union to the legacy column so
+      // anything still reading it stays correct.
+      if (
+        resource.fields.some((f) => f.name === "seoPrimaryKeyword") &&
+        resource.fields.every((f) => f.name !== "seoKeywords")
+      ) {
+        const primary = (payload.seoPrimaryKeyword as string | null) ?? "";
+        const secondary = (payload.seoSecondaryKeywords as string[] | undefined) ?? [];
+        const combined = [primary, ...secondary].map((s) => s.trim()).filter(Boolean);
+        payload.seoKeywords = combined;
       }
       if (mode === "create") {
         await api.post(resource.apiPath, payload);
@@ -286,6 +304,21 @@ export function ResourceForm({ resource, initial, mode, id }: Props) {
             placeholder={f.placeholder}
           />
         );
+      case "primaryKeyword":
+        return (
+          <PrimaryKeywordInput
+            value={(v as string) ?? ""}
+            onChange={(val) => set(f.name, val)}
+            placeholder={f.placeholder}
+          />
+        );
+      case "secondaryKeywords":
+        return (
+          <SecondaryKeywordsInput
+            value={(v as string[]) ?? []}
+            onChange={(items) => set(f.name, items)}
+          />
+        );
       case "boolean":
         return (
           <label className="inline-flex items-center gap-2 text-sm">
@@ -348,6 +381,9 @@ export function ResourceForm({ resource, initial, mode, id }: Props) {
         seoDescription: (values.seoDescription as string | null | undefined) ?? null,
         seoOgImage: (values.seoOgImage as string | null | undefined) ?? null,
         seoKeywords: (values.seoKeywords as string[] | null | undefined) ?? null,
+        seoPrimaryKeyword: (values.seoPrimaryKeyword as string | null | undefined) ?? null,
+        seoSecondaryKeywords:
+          (values.seoSecondaryKeywords as string[] | null | undefined) ?? null,
         seoOgTitle: (values.seoOgTitle as string | null | undefined) ?? null,
         seoOgDescription: (values.seoOgDescription as string | null | undefined) ?? null,
         seoCanonicalUrl: (values.seoCanonicalUrl as string | null | undefined) ?? null,

@@ -24,7 +24,12 @@ export type ItemFallback = {
   seoTitle?: string | null;
   seoDescription?: string | null;
   seoOgImage?: string | null;
+  // Legacy combined keyword list — left in for backwards compat. New code
+  // should pass seoPrimaryKeyword + seoSecondaryKeywords; the resolver still
+  // reads this if those two are empty.
   seoKeywords?: string[] | null;
+  seoPrimaryKeyword?: string | null;
+  seoSecondaryKeywords?: string[] | null;
   seoOgTitle?: string | null;
   seoOgDescription?: string | null;
   seoCanonicalUrl?: string | null;
@@ -40,6 +45,10 @@ export type ResolvedSeo = {
   title: ResolvedField<string>;
   fullTitle: ResolvedField<string>; // title with siteName template applied
   description: ResolvedField<string>;
+  primaryKeyword: ResolvedField<string>;
+  secondaryKeywords: ResolvedField<string[]>;
+  // Combined [primary, ...secondary].filter(Boolean) — kept for legacy preview
+  // consumers (the existing "All keywords" pill row).
   keywords: ResolvedField<string[]>;
   ogTitle: ResolvedField<string>;
   ogDescription: ResolvedField<string>;
@@ -95,10 +104,51 @@ export function resolveSeo(
     { value: global.defaultDescription || "", source: "global" },
   );
 
+  // Primary keyword — page → item → fallback (item title) → global default.
+  // We treat the legacy seoKeywords[0] as a fallback "item" source so rows
+  // that still use the old single-list shape keep emitting a primary.
+  const legacyItemPrimary =
+    !item.seoPrimaryKeyword && item.seoKeywords?.length ? item.seoKeywords[0] : null;
+  const primaryKeyword = pick<string>(
+    [
+      { value: page?.primaryKeyword ?? null, source: "page" },
+      { value: item.seoPrimaryKeyword ?? null, source: "item" },
+      { value: legacyItemPrimary, source: "item" },
+    ],
+    { value: global.defaultPrimaryKeyword ?? "", source: "global" },
+  );
+
+  // Secondary keywords — page → item → legacy item.seoKeywords.slice(1) →
+  // global default. We also dedupe against the primary so editors don't see
+  // the same word twice in the preview.
+  const legacyItemSecondary =
+    !item.seoSecondaryKeywords?.length && item.seoKeywords && item.seoKeywords.length > 1
+      ? item.seoKeywords.slice(1)
+      : null;
+  const secondaryKeywords = pick<string[]>(
+    [
+      { value: page?.secondaryKeywords?.length ? page.secondaryKeywords : null, source: "page" },
+      { value: item.seoSecondaryKeywords?.length ? item.seoSecondaryKeywords : null, source: "item" },
+      { value: legacyItemSecondary, source: "item" },
+    ],
+    { value: global.defaultSecondaryKeywords ?? [], source: "global" },
+  );
+  const secondaryDeduped: ResolvedField<string[]> = {
+    value: secondaryKeywords.value.filter((k) => k && k !== primaryKeyword.value),
+    source: secondaryKeywords.source,
+  };
+
+  // Legacy combined view — first primary, then secondaries. Used by the
+  // existing "All keywords" preview row and by /meta name="keywords"/ until
+  // the legacy seoKeywords column is dropped.
+  const combinedKeywordsList = [primaryKeyword.value, ...secondaryDeduped.value].filter(Boolean);
+  const legacyPageKeywords = page?.keywords?.length ? page.keywords : null;
+  const legacyItemKeywords = item.seoKeywords?.length ? item.seoKeywords : null;
   const keywords = pick<string[]>(
     [
-      { value: page?.keywords?.length ? page.keywords : null, source: "page" },
-      { value: item.seoKeywords?.length ? item.seoKeywords : null, source: "item" },
+      { value: combinedKeywordsList.length ? combinedKeywordsList : null, source: primaryKeyword.source },
+      { value: legacyPageKeywords, source: "page" },
+      { value: legacyItemKeywords, source: "item" },
     ],
     { value: global.defaultKeywords ?? [], source: "global" },
   );
@@ -159,6 +209,8 @@ export function resolveSeo(
     title,
     fullTitle,
     description,
+    primaryKeyword,
+    secondaryKeywords: secondaryDeduped,
     keywords,
     ogTitle,
     ogDescription,

@@ -171,7 +171,26 @@ export function SeoPreview({ path, item, title = "Live SEO preview" }: Props) {
         <Row label="Description" field={resolved.description}>
           {resolved.description.value}
         </Row>
-        <Row label="Keywords" field={resolved.keywords} emptyText="none">
+        <Row label="Primary" field={resolved.primaryKeyword} emptyText="not set">
+          {resolved.primaryKeyword.value ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 text-[11px] font-medium">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+              {resolved.primaryKeyword.value}
+            </span>
+          ) : null}
+        </Row>
+        <Row label="Secondary" field={resolved.secondaryKeywords} emptyText="none">
+          {resolved.secondaryKeywords.value.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {resolved.secondaryKeywords.value.map((k, i) => (
+                <span key={i} className="rounded-full bg-rule/40 px-2 py-0.5 text-[11px]">
+                  {k}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </Row>
+        <Row label="All keywords (legacy)" field={resolved.keywords} emptyText="none">
           {resolved.keywords.value.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {resolved.keywords.value.map((k, i) => (

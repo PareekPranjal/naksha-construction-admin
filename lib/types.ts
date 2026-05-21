@@ -10,6 +10,8 @@ export type FieldType =
   | "imageArray"
   | "stringArray"
   | "keywords"
+  | "primaryKeyword"
+  | "secondaryKeywords"
   | "boolean"
   | "json";
 

@@ -7,7 +7,8 @@ import { api, ApiError } from "@/lib/api";
 import { Button, Card, Field, Input, Textarea } from "@/components/ui";
 import { ImagePicker } from "@/components/ImagePicker";
 import { CharCount } from "@/components/CharCount";
-import { KeywordsInput } from "@/components/KeywordsInput";
+import { PrimaryKeywordInput } from "@/components/PrimaryKeywordInput";
+import { SecondaryKeywordsInput } from "@/components/SecondaryKeywordsInput";
 import { SeoPreview } from "@/components/SeoPreview";
 import { useConfirm } from "@/components/Confirm";
 import { detectCollectionPath } from "@/lib/seoResolve";
@@ -30,6 +31,8 @@ const EMPTY_DRAFT: Omit<SeoPage, "id"> = {
   title: "",
   description: "",
   keywords: [],
+  primaryKeyword: "",
+  secondaryKeywords: [],
   ogTitle: "",
   ogDescription: "",
   ogImage: "",
@@ -69,7 +72,16 @@ export function PageSeoTab() {
   }
   function startEdit(p: SeoPage) {
     setEditing(p);
-    setDraft({ ...p, keywords: p.keywords ?? [] });
+    // Bootstrap the new fields from the legacy keywords list when the row
+    // hasn't been migrated yet, so editors don't lose context on first edit.
+    const legacy = p.keywords ?? [];
+    setDraft({
+      ...p,
+      keywords: legacy,
+      primaryKeyword: p.primaryKeyword ?? legacy[0] ?? "",
+      secondaryKeywords:
+        p.secondaryKeywords?.length ? p.secondaryKeywords : legacy.slice(1),
+    });
   }
   function cancelEdit() {
     setEditing(null);
@@ -81,10 +93,20 @@ export function PageSeoTab() {
     setSaving(true);
     setError(null);
     try {
+      // Keep the legacy `keywords` column in sync with [primary, ...secondary]
+      // for one release so consumers still reading it stay correct.
+      const combined = [draft.primaryKeyword ?? "", ...(draft.secondaryKeywords ?? [])]
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const payload = {
+        ...draft,
+        keywords: combined,
+        primaryKeyword: (draft.primaryKeyword ?? "").trim() || null,
+      };
       if (editing) {
-        await api.patch(`/api/seo/pages/${editing.id}`, draft);
+        await api.patch(`/api/seo/pages/${editing.id}`, payload);
       } else {
-        await api.post(`/api/seo/pages`, draft);
+        await api.post(`/api/seo/pages`, payload);
       }
       await refresh();
       cancelEdit();
@@ -307,10 +329,16 @@ function PageEditorModal({
             </div>
           </Field>
 
-          <Field label="Keywords" help="Comma-separated.">
-            <KeywordsInput
-              value={draft.keywords ?? []}
-              onChange={(next) => set("keywords", next)}
+          <Field label="Primary keyword" help="The one focus keyword this page is optimised for.">
+            <PrimaryKeywordInput
+              value={draft.primaryKeyword ?? ""}
+              onChange={(v) => set("primaryKeyword", v)}
+            />
+          </Field>
+          <Field label="Secondary keywords" help="3–5 supporting / LSI variants. Comma-separated.">
+            <SecondaryKeywordsInput
+              value={draft.secondaryKeywords ?? []}
+              onChange={(next) => set("secondaryKeywords", next)}
             />
           </Field>
 
@@ -375,7 +403,12 @@ function PageEditorModal({
                   seoTitle: draft.title ?? null,
                   seoDescription: draft.description ?? null,
                   seoOgImage: draft.ogImage ?? null,
-                  seoKeywords: draft.keywords ?? null,
+                  seoKeywords:
+                    (draft.primaryKeyword ?? "") || draft.secondaryKeywords?.length
+                      ? [draft.primaryKeyword ?? "", ...(draft.secondaryKeywords ?? [])].filter(Boolean)
+                      : null,
+                  seoPrimaryKeyword: draft.primaryKeyword ?? null,
+                  seoSecondaryKeywords: draft.secondaryKeywords ?? null,
                   seoOgTitle: draft.ogTitle ?? null,
                   seoOgDescription: draft.ogDescription ?? null,
                   seoCanonicalUrl: draft.canonicalUrl ?? null,

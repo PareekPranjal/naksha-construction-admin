@@ -15,6 +15,8 @@ export type SeoSettings = {
   titleTemplate: string;
   defaultDescription: string;
   defaultKeywords: string[];
+  defaultPrimaryKeyword?: string;
+  defaultSecondaryKeywords?: string[];
   defaultOgImage: string;
   favicon: string;
   appleTouchIcon: string;
@@ -59,7 +61,11 @@ export type SeoPage = {
   path: string;
   title: string | null;
   description: string | null;
+  // Legacy single keyword list — kept on the type so existing read paths
+  // (combined-keywords preview row) keep working during the transition.
   keywords: string[];
+  primaryKeyword: string | null;
+  secondaryKeywords: string[];
   ogTitle: string | null;
   ogDescription: string | null;
   ogImage: string | null;
@@ -76,6 +82,8 @@ export type ContentRow = {
   seoDescription: string | null;
   seoOgImage: string | null;
   seoKeywords: string[] | null;
+  seoPrimaryKeyword: string | null;
+  seoSecondaryKeywords: string[] | null;
   seoOgTitle: string | null;
   seoOgDescription: string | null;
   seoCanonicalUrl: string | null;

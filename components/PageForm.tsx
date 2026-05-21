@@ -19,6 +19,8 @@ type Seo = {
   seoDescription: string;
   seoOgImage: string;
   seoKeywords: string;
+  seoPrimaryKeyword: string;
+  seoSecondaryKeywords: string;
   seoRobots: string;
   seoCanonical: string;
   ogTitle: string;
@@ -35,6 +37,8 @@ const EMPTY_SEO: Seo = {
   seoDescription: "",
   seoOgImage: "",
   seoKeywords: "",
+  seoPrimaryKeyword: "",
+  seoSecondaryKeywords: "",
   seoRobots: "",
   seoCanonical: "",
   ogTitle: "",
@@ -56,6 +60,8 @@ function loadSeo(p: Record<string, unknown> = {}): Seo {
     seoDescription: get("seoDescription"),
     seoOgImage: get("seoOgImage"),
     seoKeywords: get("seoKeywords"),
+    seoPrimaryKeyword: get("seoPrimaryKeyword"),
+    seoSecondaryKeywords: get("seoSecondaryKeywords"),
     seoRobots: get("seoRobots"),
     seoCanonical: get("seoCanonical"),
     ogTitle: get("ogTitle"),
@@ -76,6 +82,8 @@ type SeoPageRow = {
   title: string | null;
   description: string | null;
   keywords: string[] | null;
+  primaryKeyword: string | null;
+  secondaryKeywords: string[] | null;
   ogTitle: string | null;
   ogDescription: string | null;
   ogImage: string | null;
@@ -102,6 +110,10 @@ function mergeSeoPageInto(seo: Seo, row: SeoPageRow): Seo {
   if (row.description) next.seoDescription = row.description;
   if (row.ogImage) next.seoOgImage = row.ogImage;
   if (row.keywords && row.keywords.length > 0) next.seoKeywords = row.keywords.join(", ");
+  if (row.primaryKeyword) next.seoPrimaryKeyword = row.primaryKeyword;
+  if (row.secondaryKeywords && row.secondaryKeywords.length > 0) {
+    next.seoSecondaryKeywords = row.secondaryKeywords.join(", ");
+  }
   if (row.canonicalUrl) next.seoCanonical = row.canonicalUrl;
   if (row.noIndex || row.noFollow) {
     next.seoRobots = robotsFromFlags(row.noIndex, row.noFollow);
@@ -111,17 +123,26 @@ function mergeSeoPageInto(seo: Seo, row: SeoPageRow): Seo {
   return next;
 }
 
+function parseCsv(s: string): string[] {
+  return s.split(",").map((x) => x.trim()).filter(Boolean);
+}
+
 // Build the SeoPage upsert payload from PageForm SEO state.
 function seoToSeoPagePayload(seo: Seo) {
   const flags = flagsFromRobots(seo.seoRobots);
-  const keywords = seo.seoKeywords
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const secondary = parseCsv(seo.seoSecondaryKeywords);
+  // Keep the legacy keywords list mirrored to [primary, ...secondary] when the
+  // editor uses the new fields, so consumers still reading it stay correct
+  // even if the seoKeywords field is left blank.
+  const legacyKeywords = seo.seoKeywords
+    ? parseCsv(seo.seoKeywords)
+    : [seo.seoPrimaryKeyword, ...secondary].map((s) => s.trim()).filter(Boolean);
   return {
     title: seo.seoTitle || null,
     description: seo.seoDescription || null,
-    keywords,
+    keywords: legacyKeywords,
+    primaryKeyword: seo.seoPrimaryKeyword.trim() || null,
+    secondaryKeywords: secondary,
     ogTitle: seo.ogTitle || null,
     ogDescription: seo.ogDescription || null,
     ogImage: seo.seoOgImage || null,
@@ -279,7 +300,13 @@ export function PageForm({ mode, initial }: Props) {
             seoDescription: seo.seoDescription || null,
             seoOgImage: seo.seoOgImage || null,
             seoKeywords: seo.seoKeywords
-              ? seo.seoKeywords.split(",").map((s) => s.trim()).filter(Boolean)
+              ? parseCsv(seo.seoKeywords)
+              : seo.seoPrimaryKeyword || seo.seoSecondaryKeywords
+                ? [seo.seoPrimaryKeyword, ...parseCsv(seo.seoSecondaryKeywords)].filter(Boolean)
+                : null,
+            seoPrimaryKeyword: seo.seoPrimaryKeyword || null,
+            seoSecondaryKeywords: seo.seoSecondaryKeywords
+              ? parseCsv(seo.seoSecondaryKeywords)
               : null,
             seoOgTitle: seo.ogTitle || null,
             seoOgDescription: seo.ogDescription || null,
@@ -339,11 +366,11 @@ export function PageForm({ mode, initial }: Props) {
         {advancedOpen && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Keywords" help="Comma-separated. Most engines ignore, but harmless.">
+              <Field label="Primary keyword" help="The one focus keyword this page is optimised for.">
                 <Input
-                  value={seo.seoKeywords}
-                  onChange={(e) => setSeoField("seoKeywords", e.target.value)}
-                  placeholder="construction, rajasthan, jaipur"
+                  value={seo.seoPrimaryKeyword}
+                  onChange={(e) => setSeoField("seoPrimaryKeyword", e.target.value)}
+                  placeholder="construction company Jaipur"
                 />
               </Field>
               <Field label="Robots" help='e.g. "index,follow" or "noindex,nofollow"'>
@@ -354,6 +381,20 @@ export function PageForm({ mode, initial }: Props) {
                 />
               </Field>
             </div>
+            <Field label="Secondary keywords" help="3–5 supporting / LSI variants. Comma-separated.">
+              <Input
+                value={seo.seoSecondaryKeywords}
+                onChange={(e) => setSeoField("seoSecondaryKeywords", e.target.value)}
+                placeholder="design-build Jaipur, turnkey construction, …"
+              />
+            </Field>
+            <Field label="Keywords (legacy)" help="Comma-separated. Kept for backwards compat — prefer the two fields above.">
+              <Input
+                value={seo.seoKeywords}
+                onChange={(e) => setSeoField("seoKeywords", e.target.value)}
+                placeholder="construction, rajasthan, jaipur"
+              />
+            </Field>
             <Field label="Canonical URL" help="Override the canonical when this page is syndicated.">
               <Input
                 value={seo.seoCanonical}
