@@ -14,13 +14,70 @@ import { useConfirm } from "@/components/Confirm";
 import { detectCollectionPath } from "@/lib/seoResolve";
 import type { SeoPage } from "../types";
 
+// Shape of a CMS Page row, only the SEO-relevant fields. We union these with
+// SeoPage rows so the SEO tab can list every page even before someone created
+// an override; editing one creates the missing peer via the backend mirror.
+type PageRowSeo = {
+  id: string;
+  path: string;
+  title: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoOgImage: string | null;
+  seoRobots: string | null;
+  seoCanonical: string | null;
+  seoKeywords: string | null;
+  seoPrimaryKeyword: string | null;
+  seoSecondaryKeywords: string | null;
+  ogTitle: string | null;
+  ogDescription: string | null;
+};
+
+type Row = {
+  path: string;
+  seo: SeoPage | null;
+  page: PageRowSeo | null;
+  // Display values — prefer the SeoPage values, fall back to the Page row's.
+  title: string;
+  description: string;
+  noIndex: boolean;
+};
+
+function flagsFromRobots(robots: string | null): { noIndex: boolean; noFollow: boolean } {
+  const v = (robots ?? "").toLowerCase();
+  return { noIndex: v.includes("noindex"), noFollow: v.includes("nofollow") };
+}
+
+function csv(s: string | null): string[] {
+  return (s ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+}
+
+// Build a draft from a Page row when no SeoPage exists yet so the editor
+// opens pre-filled with the Page's current SEO instead of blank.
+function pageRowToDraft(p: PageRowSeo): Omit<SeoPage, "id"> {
+  const flags = flagsFromRobots(p.seoRobots);
+  return {
+    path: p.path,
+    title: p.seoTitle ?? "",
+    description: p.seoDescription ?? "",
+    keywords: csv(p.seoKeywords),
+    primaryKeyword: p.seoPrimaryKeyword ?? "",
+    secondaryKeywords: csv(p.seoSecondaryKeywords),
+    ogTitle: p.ogTitle ?? "",
+    ogDescription: p.ogDescription ?? "",
+    ogImage: p.seoOgImage ?? "",
+    canonicalUrl: p.seoCanonical ?? "",
+    noIndex: flags.noIndex,
+    noFollow: flags.noFollow,
+  };
+}
+
 const QUICK_ADD_PATHS = [
   "/",
   "/about",
   "/services",
   "/projects",
   "/contact",
-  "/sustainability",
   "/locations",
   "/legal/privacy",
   "/legal/terms",
@@ -43,7 +100,7 @@ const EMPTY_DRAFT: Omit<SeoPage, "id"> = {
 
 export function PageSeoTab() {
   const confirm = useConfirm();
-  const [pages, setPages] = useState<SeoPage[]>([]);
+  const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<SeoPage | null>(null);
@@ -57,8 +114,38 @@ export function PageSeoTab() {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await api.get<{ pages: SeoPage[] }>("/api/seo/pages");
-      setPages(r.pages);
+      const [seoRes, pageRes] = await Promise.all([
+        api.get<{ pages: SeoPage[] }>("/api/seo/pages"),
+        api.get<PageRowSeo[]>("/pages").catch(() => [] as PageRowSeo[]),
+      ]);
+      // Merge SeoPage rows + Page records by path. Each unique path becomes a
+      // single row in the table; editing one writes to SeoPage (and the
+      // backend mirrors the change back to the Page record).
+      const byPath = new Map<string, Row>();
+      for (const p of pageRes) {
+        const flags = flagsFromRobots(p.seoRobots);
+        byPath.set(p.path, {
+          path: p.path,
+          seo: null,
+          page: p,
+          title: p.seoTitle ?? "",
+          description: p.seoDescription ?? "",
+          noIndex: flags.noIndex,
+        });
+      }
+      for (const s of seoRes.pages) {
+        const prev = byPath.get(s.path);
+        byPath.set(s.path, {
+          path: s.path,
+          seo: s,
+          page: prev?.page ?? null,
+          title: s.title ?? prev?.title ?? "",
+          description: s.description ?? prev?.description ?? "",
+          noIndex: s.noIndex,
+        });
+      }
+      const merged = [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
+      setRows(merged);
     } catch (e) {
       if (e instanceof ApiError) setError(e.message);
     } finally {
@@ -70,18 +157,24 @@ export function PageSeoTab() {
     setEditing(null);
     setDraft({ ...EMPTY_DRAFT, path: prefilledPath });
   }
-  function startEdit(p: SeoPage) {
-    setEditing(p);
-    // Bootstrap the new fields from the legacy keywords list when the row
-    // hasn't been migrated yet, so editors don't lose context on first edit.
-    const legacy = p.keywords ?? [];
-    setDraft({
-      ...p,
-      keywords: legacy,
-      primaryKeyword: p.primaryKeyword ?? legacy[0] ?? "",
-      secondaryKeywords:
-        p.secondaryKeywords?.length ? p.secondaryKeywords : legacy.slice(1),
-    });
+  function startEdit(row: Row) {
+    if (row.seo) {
+      setEditing(row.seo);
+      const legacy = row.seo.keywords ?? [];
+      setDraft({
+        ...row.seo,
+        keywords: legacy,
+        primaryKeyword: row.seo.primaryKeyword ?? legacy[0] ?? "",
+        secondaryKeywords:
+          row.seo.secondaryKeywords?.length ? row.seo.secondaryKeywords : legacy.slice(1),
+      });
+      return;
+    }
+    // Page-only row: open the modal pre-filled with the Page's SEO so the
+    // editor isn't typing into a blank form. Saving creates a SeoPage and
+    // the backend mirrors any changes back into the Page record.
+    setEditing(null);
+    setDraft(row.page ? pageRowToDraft(row.page) : { ...EMPTY_DRAFT, path: row.path });
   }
   function cancelEdit() {
     setEditing(null);
@@ -133,7 +226,7 @@ export function PageSeoTab() {
     }
   }
 
-  const existingPaths = new Set(pages.map((p) => p.path));
+  const existingPaths = new Set(rows.map((r) => r.path));
   const availableQuickAdd = QUICK_ADD_PATHS.filter((p) => !existingPaths.has(p));
 
   return (
@@ -148,8 +241,9 @@ export function PageSeoTab() {
           </Button>
         </div>
         <p className="text-xs text-muted mb-4">
-          Each row controls the SEO of one URL path. Useful for static routes
-          (<code>/services</code>, <code>/legal/privacy</code>) that don&apos;t have a CMS Page document.
+          One row per URL path on the site. CMS Pages appear automatically;
+          editing here also updates the page&apos;s SEO inside <strong>Pages</strong>.
+          Static routes (no CMS Page) get added on first save.
         </p>
 
         {availableQuickAdd.length > 0 && (
@@ -172,15 +266,16 @@ export function PageSeoTab() {
 
         {loading ? (
           <p className="text-sm text-muted">Loading…</p>
-        ) : pages.length === 0 ? (
+        ) : rows.length === 0 ? (
           <p className="text-sm text-muted py-3">
-            No path overrides yet. Use the quick-add buttons or click <strong>New override</strong>.
+            No pages found yet. Use the quick-add buttons or click <strong>New override</strong>.
           </p>
         ) : (
           <table className="w-full text-sm">
             <thead className="text-left text-xs text-muted uppercase tracking-wider">
               <tr>
                 <th className="py-2">Path</th>
+                <th className="py-2">Source</th>
                 <th className="py-2">Title</th>
                 <th className="py-2">Description</th>
                 <th className="py-2 text-center">Index</th>
@@ -188,13 +283,18 @@ export function PageSeoTab() {
               </tr>
             </thead>
             <tbody>
-              {pages.map((p) => {
-                const hit = detectCollectionPath(p.path);
+              {rows.map((r) => {
+                const hit = detectCollectionPath(r.path);
+                const sourceLabel = r.seo && r.page
+                  ? { text: "synced", tone: "bg-emerald-50 text-emerald-800 border-emerald-200" }
+                  : r.seo
+                    ? { text: "SEO only", tone: "bg-sky-50 text-sky-800 border-sky-200" }
+                    : { text: "Page only", tone: "bg-amber-50 text-amber-800 border-amber-200" };
                 return (
-                  <tr key={p.id} className="border-t border-rule">
+                  <tr key={r.path} className="border-t border-rule">
                     <td className="py-2 font-mono text-xs">
                       <div className="flex items-center gap-1.5">
-                        {p.path}
+                        {r.path}
                         {hit && (
                           <span
                             className="rounded-full bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5"
@@ -205,29 +305,39 @@ export function PageSeoTab() {
                         )}
                       </div>
                     </td>
-                    <td className="py-2">{p.title || <span className="text-muted">—</span>}</td>
+                    <td className="py-2">
+                      <span
+                        className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${sourceLabel.tone}`}
+                        title={r.page ? `Page id: ${r.page.id}` : undefined}
+                      >
+                        {sourceLabel.text}
+                      </span>
+                    </td>
+                    <td className="py-2">{r.title || <span className="text-muted">—</span>}</td>
                     <td className="py-2 text-xs text-muted truncate max-w-[280px]">
-                      {p.description || "—"}
+                      {r.description || "—"}
                     </td>
                     <td className="py-2 text-center text-xs">
-                      {p.noIndex ? <span className="text-red-600">noindex</span> : <span className="text-emerald-600">index</span>}
+                      {r.noIndex ? <span className="text-red-600">noindex</span> : <span className="text-emerald-600">index</span>}
                     </td>
                     <td className="py-2 text-right whitespace-nowrap">
-                      {hit && (
+                      {r.page && (
                         <Link
-                          href={hit.editPath}
+                          href={`/pages/${r.page.id}`}
                           className="text-muted hover:text-ink p-1.5 inline-flex"
-                          title={`Open ${hit.collection} list`}
+                          title="Open in Pages editor"
                         >
                           <ArrowUpRight className="h-4 w-4" />
                         </Link>
                       )}
-                      <button onClick={() => startEdit(p)} className="text-ink hover:text-accent p-1.5" title="Edit">
+                      <button onClick={() => startEdit(r)} className="text-ink hover:text-accent p-1.5" title="Edit SEO">
                         <Pencil className="h-4 w-4" />
                       </button>
-                      <button onClick={() => remove(p)} className="text-red-600 hover:text-red-700 p-1.5" title="Delete">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {r.seo && (
+                        <button onClick={() => remove(r.seo!)} className="text-red-600 hover:text-red-700 p-1.5" title="Remove SEO override">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

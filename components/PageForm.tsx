@@ -127,30 +127,6 @@ function parseCsv(s: string): string[] {
   return s.split(",").map((x) => x.trim()).filter(Boolean);
 }
 
-// Build the SeoPage upsert payload from PageForm SEO state.
-function seoToSeoPagePayload(seo: Seo) {
-  const flags = flagsFromRobots(seo.seoRobots);
-  const secondary = parseCsv(seo.seoSecondaryKeywords);
-  // Keep the legacy keywords list mirrored to [primary, ...secondary] when the
-  // editor uses the new fields, so consumers still reading it stay correct
-  // even if the seoKeywords field is left blank.
-  const legacyKeywords = seo.seoKeywords
-    ? parseCsv(seo.seoKeywords)
-    : [seo.seoPrimaryKeyword, ...secondary].map((s) => s.trim()).filter(Boolean);
-  return {
-    title: seo.seoTitle || null,
-    description: seo.seoDescription || null,
-    keywords: legacyKeywords,
-    primaryKeyword: seo.seoPrimaryKeyword.trim() || null,
-    secondaryKeywords: secondary,
-    ogTitle: seo.ogTitle || null,
-    ogDescription: seo.ogDescription || null,
-    ogImage: seo.seoOgImage || null,
-    canonicalUrl: seo.seoCanonical || null,
-    noIndex: flags.noIndex,
-    noFollow: flags.noFollow,
-  };
-}
 
 export function PageForm({ mode, initial }: Props) {
   const router = useRouter();
@@ -223,18 +199,9 @@ export function PageForm({ mode, initial }: Props) {
       if (mode === "create") await api.post("/pages", payload);
       else if (initial) await api.patch(`/pages/${initial.id}`, payload);
 
-      // Mirror the SEO subset to the SeoPage row keyed by path so the SEO
-      // admin's Page SEO tab reflects what was just saved here. The website
-      // resolver also reads SeoPage as the per-path layer of the cascade.
-      if (path && path.startsWith("/")) {
-        try {
-          await api.put(`/api/seo/pages/by-path/${encodeURIComponent(path)}`, seoToSeoPagePayload(seo));
-        } catch (e) {
-          // Non-fatal: the Page row was saved. Surface the error but don't
-          // block navigation, since SEO admin can repair the SeoPage row.
-          console.warn("SeoPage sync failed:", e);
-        }
-      }
+      // The backend auto-mirrors SEO fields to the SeoPage row keyed by
+      // path on every POST/PATCH /pages call, so no extra request is
+      // needed here to keep the SEO admin in sync.
 
       router.push("/pages");
       router.refresh();
